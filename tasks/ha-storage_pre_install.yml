@@ -9,10 +9,15 @@
 - fail: msg="The cluster must be healthy"
   when: crm_mon.stdout.find("CLUSTER OK") < 0
 
+- name: Get the number of nodes with the right attribute and value
+  shell: crm_mon -A1|grep {{ ha_storage_cluster_attribute_name }} |grep -c {{ ha_storage_cluster_attribute_value }}
+  register: ha_storage_cluster_nodes
+  run_once: true
+
 # Discover luns
 - name: Refresh if some luns are missing
-  shell: test -e /dev/mapper/{{ item.id }} || /usr/bin/rescan-scsi-bus.sh
-  with_items: "{{ ha-storage.luns }}"
+  shell: test -e {{ item.id }} || /usr/bin/rescan-scsi-bus.sh
+  with_items: "{{ ha_storage.luns }}"
 
 # Disable lvmetad
 - name: Disable and stop lvmetad

@@ -1,0 +1,8 @@
+---
+
+ha_storage_clvm_packages:
+  - clvm
+  - dlm
+
+ha_storage_ocfs2_packages:
+  - ocfs2-tools

@@ -1,0 +1,53 @@
+# Copyright (C) 2016 Mathieu Grzybek
+#
+# License: GNU General Public License (GPL)
+---
+- version: 2.2
+  category: Cluster
+  shortdesc: Resource group with a logical volume group as first member.
+  longdesc: |
+    The location of the group is based on the given attribute.
+
+  parameters:
+   - name: id
+     shortdesc: Name.
+     longdesc: Name given to the group.
+     required: true
+     type: string
+
+   - name: cluster-attribute
+     shortdesc: Which attribute to check.
+     longdesc: Which attribute to check.
+     required: true
+     type: string
+
+   - name: attribute-value
+     shortdesc: Which value to expect.
+     longdesc: Which value to expect.
+     required: true
+     type: string
+
+   - name: exclusive
+     shortdesc: Exclusive mounting.
+     longdesc: Is this volume exclusive?
+     required: false
+     default: true
+     type: boolean
+
+  actions:
+    - cib: |
+        primitive {{id}}_vg LVM
+         params volgrpname={{id}} exclusive={{exclusive}} partial_activation=true
+         op monitor timeout=30 interval=10
+         op start timeout=30 interval=0
+         op stop timeout=30 interval=0
+
+    - cib: |
+        group g-{{id}} {{id}}_vg
+
+    - cib: |
+        location loc_{{id}} g-{{id}}
+         rule -inf: '{{cluster-attribute}}' ne "{{attribute-value}}"
+
+    - cib: |
+        order order_clvm_g-{{id}} Mandatory: c-clvm:start g-{{id}}:start

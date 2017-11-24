@@ -1,16 +1,12 @@
 ---
 
-lxc_libvirt_packages:
-  - libvirt-lxc-daemon
-  - libvirt-lxc
-
-lxc_clvm_packages:
+ha_storage_clvm_packages:
   - lvm2-clvm
   - lvm2-cmirrord
   - dlm-kmp-default
   - libdlm
 
-lxc_ocfs2_packages:
+ha_storage_ocfs2_packages:
   - ocfs2-kmp-default
   - ocfs2-tools
   - dlm-kmp-default

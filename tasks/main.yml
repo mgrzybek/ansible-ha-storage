@@ -1,5 +1,5 @@
 ---
-# tasks file for ansible-ha-lxc
+# tasks file for ansible-ha-storage
 
 - name: Gather variables for each operating system
   include_vars: "{{ item }}"

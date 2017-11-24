@@ -1,11 +1,17 @@
 ---
 # defaults file for ansible-ha-storage
 
-ha-storage_fs: xfs
+ha_storage_fs: xfs
 
 # Packaging stuff
 cache_timeout: 600
+ha_storage_package_state: present
 
 # The attributes used to locate the resources
-ha-storage_cluster_attribute_name: cluster_role
-ha-storage_cluster_attribute_value: compute
+ha_storage_cluster_attribute_name: cluster_role
+ha_storage_cluster_attribute_value: compute
+
+ha_storage_crm_scripts_root_path: /usr/share/crmsh/scripts
+ha_storage_crm_scripts:
+  - cloned_clvm
+  - group_clustered_vg

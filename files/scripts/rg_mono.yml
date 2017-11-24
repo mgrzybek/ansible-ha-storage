@@ -1,0 +1,37 @@
+# Copyright (C) 2016 Mathieu Grzybek
+#
+# License: GNU General Public License (GPL)
+---
+- version: 2.2
+  category: Cluster
+  shortdesc: Resource group with a logical volume group as first member.
+  longdesc: |
+    The location of the group is based on the given hostname.
+
+  parameters:
+   - name: id
+     shortdesc: Name.
+     longdesc: Name given to the group.
+     required: true
+     type: string
+
+   - name: host
+     shortdesc: Hostname.
+     longdesc: Hostname to set the location constraint.
+     required: true
+     type: string
+
+  actions:
+    - cib: |
+        primitive {{id}}_vg LVM
+         params volgrpname={{id}} exclusive=true partial_activation=true
+         op monitor timeout=30 interval=10
+         op start timeout=30 interval=0
+         op stop timeout=30 interval=0
+
+    - cib: |
+        group g-{{id}} {{id}}_vg
+
+    - cib: |
+        location loc_g-{{id}} g-{{id}}
+         rule -inf: '#uname' ne "{{host}}"

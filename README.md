@@ -35,18 +35,18 @@ Example Playbook
           volume_group: db
           filesystems:
             - lv: data
-              size: 20
+              size: 20G
               fstype: xfs
               mountpoint: /srv/data
             - lv: xlog
-              size: 2
+              size: 2G
               fstype: xfs
               mountpoint: /srv/xlog
 
 A dictionnary called ha-storage is needed. Three keys are present:
 * luns: a list of devices to use (the wwn and an alias to use)
 * volume_group: the name of the LVM VG to create
-* filesystems: a list of volumes (name, size in GB, fstype, mountpoint)
+* filesystems: a list of volumes (name, size, fstype, mountpoint)
 
 License
 -------
