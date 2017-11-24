@@ -1,0 +1,40 @@
+---
+
+- name: LV create "{{ ha-storage.volume_group }}/{{ item.lv }}"
+  lvol: vg={{ ha-storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
+  when:
+    - item.fstype != "tmpfs"
+
+- name: LV mkfs "{{ ha-storage.volume_group }}/{{ item.lv }}"
+  filesystem: fstype={{ item.fstype }} dev=/dev/{{ ha-storage.volume_group }}/{{ item.lv }}
+  when:
+    - item.fstype != "tmpfs"
+
+- name: Check if the LV primitive is present
+  shell: crm configure show
+  register: crm_conf
+
+- name: Create primitive "{{ ha-storage.volume_group }}_{{ item.lv }}"
+  shell: >
+    crm configure primitive "{{ ha-storage.volume_group }}_{{ item.lv }}" Filesystem \
+        directory="{{ item.mountpoint }}" \
+        param device="/dev/{{ ha-storage.volume_group }}/{{ item.lv }}" \
+        fstype="{{ item.fstype }}" \
+        op monitor timeout=40 interval=20 \
+        op start timeout=60 interval=0 \
+        op stop timeout=60 interval=0 \
+        meta target-role=Stopped
+  when:
+    - crm_conf.stdout.find("primitive {{ ha-storage.volume_group }}_{{ item.lv }}") < 0
+
+- name: Check group configuration "{{ ha-storage.volume_group }}_rg"
+  shell: crm configure show g-{{ ha-storage.volume_group }}
+  register: crm_group_conf
+
+- name: Add the LV primitive "{{ item.lv }}" to the group
+  shell: crm -w configure modgroup "g-{{ ha-storage.volume_group }}" add "{{ ha-storage.volume_group }}_{{ item.lv }}"
+  when:
+    - crm_group_conf.stdout.find("{{ item.lv }}") < 0
+
+- name: Start the primitive "{{ ha-storage.volume_group }}_{{ item.lv }}"
+  shell: crm -w resource start {{ ha-storage.volume_group }}_{{ item.lv }}

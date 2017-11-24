@@ -1,0 +1,19 @@
+
+
+- hosts: all
+  roles:
+    - { role: ansible-ha-storage }
+  vars:
+      ha-storage:
+        luns:
+          - id: 23234
+            alias: lun-dc-1
+          - id: 45345
+            alias: lun-dc-2
+        volume_group: data
+        filesystems:
+          # /tmp size, in GB
+          - lv: tmp
+            size: 2
+            fstype: tmpfs
+            mountpoint: /tmp

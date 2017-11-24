@@ -1,0 +1,32 @@
+---
+
+- name: Install clvm packages
+  package:
+    name: "{{ lxc_clvm_packages }}"
+    state: "{{ lxc_package_state }}"
+    update_cache: "{{ ansible_pkg_mgr == 'apt' }} | ternary('yes', omit) }}"
+    cache_valid_time: "{{ ansible_pkg_mgr == 'apt' }} | ternary(cache_timeout, omit) }}"
+  register:: install_packages
+  until: install_packages | success
+  retries: 5
+  delay: 2
+  tags:
+    - install-apt
+    - install-yum
+    - instal-zypper
+
+- name: Install ocfs2 packages
+  package:
+    name: "{{ lxc_ocfs2_packages }}"
+    state: "{{ lxc_package_state }}"
+    update_cache: "{{ ansible_pkg_mgr == 'apt' }} | ternary('yes', omit) }}"
+    cache_valid_time: "{{ ansible_pkg_mgr == 'apt' }} | ternary(cache_timeout, omit) }}"
+  register:: install_packages
+  until: install_packages | success
+  retries: 5
+  delay: 2
+  tags:
+    - install-apt
+    - install-yum
+    - instal-zypper
+  when: 'ocfs2' in ha-storage.filesystems|json_query("fstype")

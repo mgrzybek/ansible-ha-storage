@@ -1,0 +1,53 @@
+---
+
+# Cluster stuff
+- name: Set clvm and dlm resources
+  shell: >
+    crm -w script run cloned_clvm \
+      size={{ cluster_compute_nodes }} \
+      attribute_name={{ ha-storage_cluster_attribute_name }} \
+      attribute_value={{ ha-storage_cluster_attribute_value }}
+  run_once: true
+
+- name: Set ocfs2 resource
+  shell: crm script run cloned_o2cb
+  run_once: true
+  when: 'ocfs2' in ha-storage.filesystems|json_query("fstype")
+
+# Set aliases in multipath.conf
+
+# Discover VG
+
+######################################
+# Deploy storage
+
+#
+# 1. a. pvcreate
+#    b. vgcreate
+#
+- name: VG Create (clustered)
+  lvg: vg={{ ha-storage.volume_group }} pvs={{ ha-storage.luns|json_query(*.id)|join(",") }} vg_options="-cy"
+  run_once: true
+
+#
+# 2. a. resource group
+#
+- name: Create resource group
+  shell: crm -w script run rg_multi id={{ ha-storage.volume_group }} cluster-attribute={{ cluster_location_attribute_name }} attribute-value={{ cluster_location_attribute_value }} exclusive=true
+  run_once: true
+
+# 3. a. lvcreate
+#    b. add resource to group
+#    c. mkfs
+- name: Locate g-{{ ha-storage.volume_group }}
+  shell: crm_resource --locate --resource "g-{{ ha-storage.volume_group }}"
+  register: crm_resource_locate_group
+  run_once: true
+
+- include: ha-storage_post_install_volume.yml
+  with_items: "{{ha-storage.filesystems}}"
+  vars:
+    lvm_mirors: ha-storage.luns|length - 1
+  run_once: true
+  when:
+    - crm_resource_locate_group.stdout.find("{{ ansible_hostname }}") > -1

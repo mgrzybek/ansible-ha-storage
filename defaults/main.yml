@@ -1,0 +1,11 @@
+---
+# defaults file for ansible-ha-storage
+
+ha-storage_fs: xfs
+
+# Packaging stuff
+cache_timeout: 600
+
+# The attributes used to locate the resources
+ha-storage_cluster_attribute_name: cluster_role
+ha-storage_cluster_attribute_value: compute

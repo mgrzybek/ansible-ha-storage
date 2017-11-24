@@ -1,0 +1,29 @@
+---
+
+# We need to know how to manage the VG.
+# If pacemaker is running, the resources are created.
+- name: Check cluster health
+  shell: crm_mon -s || exit 0
+  register: crm_mon
+
+- fail: msg="The cluster must be healthy"
+  when: crm_mon.stdout.find("CLUSTER OK") < 0
+
+# Discover luns
+- name: Refresh if some luns are missing
+  shell: test -e /dev/mapper/{{ item.id }} || /usr/bin/rescan-scsi-bus.sh
+  with_items: "{{ ha-storage.luns }}"
+
+# Disable lvmetad
+- name: Disable and stop lvmetad
+  service: name={{ item }} state=stopped enabled=no
+  with_items:
+   - lvm2-lvmetad.socket
+   - lvm2-lvmetad.service
+
+# Deploy lock manager and cluster lvm
+- name: Enable cluster lvm
+  shell: lvmconf --enable-cluster
+
+# Skip existing local VG to be managed by clvm
+# TODO: edit lvm.conf and volumes_list
