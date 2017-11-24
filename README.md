@@ -21,27 +21,27 @@ A list of other roles hosted on Galaxy should go here, plus any details in regar
 Example Playbook
 ----------------
 
-  - name: Create some clustered filesystems
-    hosts: all
-    roles:
-    - { role: ansible-ha-storage }
-    vars:
-      ha-storage:
-        luns:
-          - id: 23234
-            alias: lun-dc-1
-          - id: 45345
-            alias: lun-dc-2
-        volume_group: db
-        filesystems:
-          - lv: data
-            size: 20
-            fstype: xfs
-            mountpoint: /srv/data
-          - lv: xlog
-            size: 2
-            fstype: xfs
-            mountpoint: /srv/xlog
+    - name: Create some clustered filesystems
+      hosts: all
+      roles:
+      - { role: ansible-ha-storage }
+      vars:
+        ha-storage:
+          luns:
+            - id: 23234
+              alias: lun-dc-1
+            - id: 45345
+              alias: lun-dc-2
+          volume_group: db
+          filesystems:
+            - lv: data
+              size: 20
+              fstype: xfs
+              mountpoint: /srv/data
+            - lv: xlog
+              size: 2
+             fstype: xfs
+             mountpoint: /srv/xlog
 
 A dictionnary called ha-storage is needed. Three keys are present:
 * luns: a list of devices to use (the wwn and an alias to use)
