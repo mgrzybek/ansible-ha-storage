@@ -21,12 +21,6 @@ A list of other roles hosted on Galaxy should go here, plus any details in regar
 Example Playbook
 ----------------
 
-A dictionnary called ha-storage is needed. Three keys are present:
-* luns: a list of devices to use (the wwn and an alias to use)
-* volume_group: the name of the LVM VG to create
-* filesystems: a list of volumes (name, size, fstype, mountpoint)
-
-
   - name: Create some clustered filesystems
     hosts: all
     roles:
@@ -48,6 +42,11 @@ A dictionnary called ha-storage is needed. Three keys are present:
             size: 2
             fstype: xfs
             mountpoint: /srv/xlog
+
+A dictionnary called ha-storage is needed. Three keys are present:
+* luns: a list of devices to use (the wwn and an alias to use)
+* volume_group: the name of the LVM VG to create
+* filesystems: a list of volumes (name, size, fstype, mountpoint)
 
 License
 -------
