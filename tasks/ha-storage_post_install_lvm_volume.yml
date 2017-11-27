@@ -15,7 +15,7 @@
   when: crm_resource_locate_group.stdout.find("NOT") > -1
 
 - name: LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
-  filesystem: fstype={{ item.fstype }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
+  filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
   when:
     - item.fstype != "tmpfs"
 

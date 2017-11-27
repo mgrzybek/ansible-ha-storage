@@ -6,3 +6,10 @@ ha_storage_clvm_packages:
 
 ha_storage_ocfs2_packages:
   - ocfs2-tools
+
+ha_storage_zfs_packages:
+  - zfsutils-linux
+
+ha_storge_zfs_resource_agent_url: https://raw.githubusercontent.com/ClusterLabs/resource-agents/v4.1.0rc1/heartbeat/ZFS
+
+ha_storage_use_zfs_ra_github: true

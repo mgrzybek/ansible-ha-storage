@@ -14,6 +14,7 @@
     - install-apt
     - install-yum
     - instal-zypper
+  when: 'not "zfs" in ha_storage.filesystems and ha_storage_fs != "zfs"'
 
 - name: Install ocfs2 packages
   package:
@@ -32,10 +33,40 @@
 #  when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
   when: '"ocfs2" in ha_storage.filesystems'
 
+- name: Install zfs packages
+  package:
+    name: "{{ ha_storage_zfs_packages }}"
+    state: "{{ ha_storage_package_state }}"
+    update_cache: "{{ ansible_pkg_mgr == 'apt' | ternary('yes', omit) }}"
+    cache_valid_time: "{{ ansible_pkg_mgr == 'apt' | ternary(cache_timeout, omit) }}"
+  register: install_packages
+  until: install_packages | success
+  retries: 5
+  delay: 2
+  tags:
+    - install-apt
+  when: '"zfs" in ha_storage.filesystems or ha_storage_fs == "zfs"'
+
 - name: Install some crm scripts (directories)
   file: path={{ ha_storage_crm_scripts_root_path }}/{{ item }} state=directory
-  with_items: "{{ ha_storage_crm_scripts }}"
+  with_items: "{{ ha_storage_crm_lvm_scripts }}"
+  when: ha_storage_fs | lower != 'zfs'
 
 - name: Install some crm scripts (files)
   copy: src=scripts/{{ item }}.yml dest={{ ha_storage_crm_scripts_root_path }}/{{ item }}/main.yml
-  with_items: "{{ ha_storage_crm_scripts }}"
+  with_items: "{{ ha_storage_crm_lvm_scripts }}"
+  when: ha_storage_fs | lower != 'zfs'
+
+- name: Install some crm scripts (directories)
+  file: path={{ ha_storage_crm_scripts_root_path }}/{{ item }} state=directory
+  with_items: "{{ ha_storage_crm_zfs_scripts }}"
+  when: '"zfs" in ha_storage.filesystems or ha_storage_fs | lower == "zfs"'
+
+- name: Install some crm scripts (files)
+  copy: src=scripts/{{ item }}.yml dest={{ ha_storage_crm_scripts_root_path }}/{{ item }}/main.yml
+  with_items: "{{ ha_storage_crm_zfs_scripts }}"
+  when: '"zfs" in ha_storage.filesystems or ha_storage_fs | lower == "zfs"'
+
+- name: Install zfs resource agent on old Ubuntu version
+  get_url: url={{ ha_storge_zfs_resource_agent_url }} dest={{ ha_storage_crm_ra_root_path }} mode=0755
+  when: ha_storage_use_zfs_ra_github is defined and ha_storage_use_zfs_ra_github == true

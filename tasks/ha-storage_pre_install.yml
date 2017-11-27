@@ -25,10 +25,12 @@
   with_items:
    - lvm2-lvmetad.socket
    - lvm2-lvmetad.service
+  when: 'not "zfs" in ha_storage.filesystems and ha_storage_fs != "zfs"'
 
 # Deploy lock manager and cluster lvm
 - name: Enable cluster lvm
   shell: lvmconf --enable-cluster
+  when: 'not "zfs" in ha_storage.filesystems and ha_storage_fs != "zfs"'
 
 # Skip existing local VG to be managed by clvm
 # TODO: edit lvm.conf and volumes_list

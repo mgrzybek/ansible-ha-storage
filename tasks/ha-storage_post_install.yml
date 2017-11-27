@@ -7,6 +7,7 @@
       size={{ ha_storage_cluster_nodes.stdout }} \
       attribute_name={{ ha_storage_cluster_attribute_name }} \
       attribute_value={{ ha_storage_cluster_attribute_value }}
+  when: 'not "zfs" in ha_storage.filesystems and ha_storage_fs != "zfs"'
   run_once: true
 
 - name: Set ocfs2 resource
@@ -30,25 +31,58 @@
 - debug: msg='{{ ha_storage|json_query("luns[*].id") }}'
   run_once: true
 
-- name: VG Create (clustered)
+- name: VG create (clustered)
   lvg: vg={{ ha_storage.volume_group }} pvs={{ ha_storage|json_query("luns[*].id")|join(",") }} vg_options="-cy"
-  #lvg: vg={{ ha-storage.volume_group }} pvs={{ ha_storage.luns.id|join(",") }} vg_options="-cy"
+  when: ha_storage_fs | lower != 'zfs'
+  run_once: true
+
+- name: zpool create
+  shell: >
+    crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
+    zpool create -R {{ ha_storage_zpool_mountpoint }} {{ ha_storage.volume_group }} raidz1 {{ ha_storage|json_query("luns[*].id")|join(" ") }}
+  when: ha_storage_fs | lower == 'zfs'
   run_once: true
 
 #
 # 2. a. resource group
 #
-- name: Create resource group
-  shell: crm -w script run group_clustered_vg id={{ ha_storage.volume_group }} cluster-attribute={{ ha_storage_cluster_attribute_name }} attribute-value={{ ha_storage_cluster_attribute_value }} exclusive=true
+- name: Create resource group (LVM)
+  shell: >
+    crm -w script run group_clustered_vg \
+      id={{ ha_storage.volume_group }} \
+      cluster-attribute={{ ha_storage_cluster_attribute_name }} \
+      attribute-value={{ ha_storage_cluster_attribute_value }} \
+      exclusive=true
+  when: ha_storage_fs | lower != 'zfs'
+  run_once: true
+
+- name: Create resource group (ZFS)
+  shell: crm -w script run group_clustered_zfs \
+    id={{ ha_storage.volume_group }} \
+    cluster-attribute={{ ha_storage_cluster_attribute_name }} \
+    attribute-value={{ ha_storage_cluster_attribute_value }}
+  when: ha_storage_fs | lower == 'zfs'
+  run_once: true
+
+- name: Locate the resource group
+  shell: crm_resource --resource g-{{ ha_storage.volume_group }} --locate
+  register: crm_resource_locate_group
   run_once: true
 
 # 3. a. lvcreate
 #    b. add resource to group
 #    c. mkfs
-- include: ha-storage_post_install_volume.yml
+- include_tasks: ha-storage_post_install_lvm_volume.yml
   with_items: "{{ha_storage.filesystems}}"
   vars:
     lvm_mirors: "{{ ha_storage.luns|length - 1 }}"
   run_once: true
   when:
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+    - ha_storage_fs | lower != 'zfs'
+
+- include_tasks: ha-storage_post_install_zfs_dataset.yml
+  with_items: "{{ha_storage.filesystems}}"
+  when:
+    - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+    - ha_storage_fs | lower == 'zfs
