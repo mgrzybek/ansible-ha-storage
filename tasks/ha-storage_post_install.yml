@@ -7,14 +7,14 @@
       size={{ ha_storage_cluster_nodes.stdout }} \
       attribute_name={{ ha_storage_cluster_attribute_name }} \
       attribute_value={{ ha_storage_cluster_attribute_value }}
-  when: 'not "zfs" in ha_storage.filesystems and ha_storage_fs != "zfs"'
+  when: ha_storage_fs != "zfs"
   run_once: true
 
 - name: Set ocfs2 resource
   shell: crm script run cloned_o2cb
   run_once: true
   #when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
-  when: '"ocfs2" in ha_storage.filesystems'
+  when:  ha_storage_fs | lower == 'ocfs2'
 
 # Set aliases in multipath.conf
 
@@ -86,3 +86,5 @@
   when:
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
     - ha_storage_fs | lower == 'zfs
+    - ha_storage.filesystems is defined
+    - ha_storage.filesystems | length > 0

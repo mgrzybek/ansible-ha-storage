@@ -14,7 +14,7 @@
     - install-apt
     - install-yum
     - instal-zypper
-  when: 'not "zfs" in ha_storage.filesystems and ha_storage_fs != "zfs"'
+  when: ha_storage_fs != "zfs"
 
 - name: Install ocfs2 packages
   package:
@@ -31,7 +31,7 @@
     - install-yum
     - instal-zypper
 #  when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
-  when: '"ocfs2" in ha_storage.filesystems'
+  when: ha_storage_fs | lower == "ocfs2"
 
 - name: Install zfs packages
   package:
@@ -45,7 +45,7 @@
   delay: 2
   tags:
     - install-apt
-  when: '"zfs" in ha_storage.filesystems or ha_storage_fs == "zfs"'
+  when: ha_storage_fs | lower == "zfs"
 
 - name: Install some crm scripts (directories)
   file: path={{ ha_storage_crm_scripts_root_path }}/{{ item }} state=directory
@@ -60,12 +60,12 @@
 - name: Install some crm scripts (directories)
   file: path={{ ha_storage_crm_scripts_root_path }}/{{ item }} state=directory
   with_items: "{{ ha_storage_crm_zfs_scripts }}"
-  when: '"zfs" in ha_storage.filesystems or ha_storage_fs | lower == "zfs"'
+  when: ha_storage_fs | lower == "zfs"
 
 - name: Install some crm scripts (files)
   copy: src=scripts/{{ item }}.yml dest={{ ha_storage_crm_scripts_root_path }}/{{ item }}/main.yml
   with_items: "{{ ha_storage_crm_zfs_scripts }}"
-  when: '"zfs" in ha_storage.filesystems or ha_storage_fs | lower == "zfs"'
+  when: ha_storage_fs | lower == "zfs"
 
 - name: Install zfs resource agent on old Ubuntu version
   get_url: url={{ ha_storge_zfs_resource_agent_url }} dest={{ ha_storage_crm_ra_root_path }} mode=0755
