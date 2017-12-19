@@ -3,7 +3,7 @@
 # License: GNU General Public License (GPL)
 ---
 - version: 2.2
-  category: FIlesystem
+  category: Filesystem
   shortdesc: Resource group with a logical volume group as first member.
   longdesc: |
     The location of the group is based on the given hostname.
