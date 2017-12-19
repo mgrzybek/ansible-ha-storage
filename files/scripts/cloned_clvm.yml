@@ -3,7 +3,7 @@
 # License: GNU General Public License (GPL)
 ---
 - version: 2.2
-  category: Storage
+  category: Filesystem
   shortdesc: Cluster LVM and DLM cloned primitives.
   longdesc: |
     Deploy a cluster LVM and DLM cloned group.
