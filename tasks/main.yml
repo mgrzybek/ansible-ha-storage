@@ -16,4 +16,8 @@
 
 - import_tasks: ha-storage_install.yml
 
-- import_tasks: ha-storage_post_install.yml
+- import_tasks: crmsh/ha-storage_post_install.yml
+  when: ansible_os_family | lower != 'redhat'
+
+- import_tasks: pcs/ha-storage_post_install.yml
+  when: ansible_os_family | lower == 'redhat'

@@ -1,0 +1,21 @@
+---
+
+- name: Dataset create "{{ ha_storage.volume_group }}/{{ item.lv }}"
+  shell: >
+    zfs list |grep -q {{ ha_storage.volume_group }}/{{ item.lv }} || \
+    zfs create "{{ ha_storage.volume_group }}/{{ item.lv }}" \
+    -o mountpoint="{{ ha_storage_zpool_mountpoint }}/{{ item.mountpoint }}" \
+    -o quota={{ item.size }}
+  when:
+    - item.size is defined
+    - item.lv is defined
+
+- name: Dataset create "{{ ha_storage.volume_group }}/{{ item.lv }}"
+  shell: >
+    zfs list |grep -q {{ ha_storage.volume_group }}/{{ item.lv }} || \
+    zfs create "{{ ha_storage.volume_group }}/{{ item.lv }}" \
+    -o mountpoint="{{ ha_storage_zpool_mountpoint }}/{{ item.mountpoint }}" 
+  when:
+    - item.size is undefined
+    - item.lv is defined
+

@@ -1,2 +1,5 @@
 ---
 # vars file for ansible-ha-storage
+
+ha_storage_clvm_packages:
+  - lvm2-cluster

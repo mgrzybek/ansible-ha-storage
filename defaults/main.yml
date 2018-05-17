@@ -23,3 +23,10 @@ ha_storage_crm_zfs_scripts:
   - group_clustered_zfs
 
 ha_storage_use_zfs_ra_github: false
+
+# Creates a sfex lv / dataset on non-mirrored LUNs
+ha_storage_use_sfex: false
+ha_storage_use_sfex_ra_github: false
+
+# Do we enable the cluster attribute for LVM?
+ha_storage_use_clvm: true
