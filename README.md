@@ -24,9 +24,9 @@ Example Playbook
     - name: Create some clustered filesystems
       hosts: all
       roles:
-      - { role: ansible-ha-storage }
+        - { role: ansible-ha-storage }
       vars:
-        ha-storage:
+        ha_storage:
           luns:
             - id: 23234
               alias: lun-dc-1
@@ -67,7 +67,65 @@ Example Playbook
               size: 2GB
               mountpoint: xlog
 
+    - name: Create some clustered filesystems using a Cinder backend
+      hosts: all
+      roles:
+        - { role: ansible-ha-storage }
+      vars:
+        ha_storage:
+          openrc: /etc/openrc.sh
+          cinder_volumes:
+            - 55659db9-1bea-46e1-a894-4b257be72bdd
+            - 548ef897-32b6-4331-99b7-4823ac6680cd
+          volume_group: db
+          filesystems:
+            - lv: data
+              size: 20G
+              fstype: xfs
+              mountpoint: /srv/data
+            - lv: xlog
+              size: 2G
+              fstype: xfs
+              mountpoint: /srv/xlog
 
+    - name: Clustered filesystems and append some resources to the group
+      hosts: all
+      pre_tasks:
+        - name: Install postgresql
+          apt: name={{ item }} state=present
+          with_items:
+            - postgresql 
+            - postgresql-common
+
+        - name: Create postgresql resource
+          shell: >
+            crm configure show pgsql \
+              || crm configure primitive \
+                   pgsql \
+                   systemd:postgresql \
+                   meta target-role=Stopped
+          run_once: true
+
+      roles:
+      - { role: ansible-ha-storage }
+      vars:
+        ha_storage:
+          openrc: /etc/openrc.sh
+          cinder_volumes:
+            - 55659db9-1bea-46e1-a894-4b257be72bdd
+            - 548ef897-32b6-4331-99b7-4823ac6680cd
+          volume_group: db
+          filesystems:
+            - lv: data
+              size: 20G
+              fstype: xfs
+              mountpoint: /srv/data
+            - lv: xlog
+              size: 2G
+              fstype: xfs
+              mountpoint: /srv/xlog
+          append_resources:
+            - name: pgsql
 
 A dictionnary called ha-storage is needed. Three keys are present:
 * luns: a list of devices to use (the wwn and an alias to use)
