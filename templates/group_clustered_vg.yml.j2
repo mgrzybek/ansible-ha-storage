@@ -1,0 +1,62 @@
+# {{ ansible_managed }}
+#
+---
+- version: 2.2
+  category: Filesystem
+  shortdesc: Resource group with a logical volume group as first member.
+  longdesc: |
+    The location of the group is based on the given attribute.
+
+  actions:
+    - cib: |
+        primitive {{ ha_storage.volume_group }}_vg LVM
+            params volgrpname={{ ha_storage.volume_group }}
+            op monitor timeout=30 interval=10
+{% if ha_storage.cinder_volumes is defined %}
+{% if ha_storage.cinder_volumes | length == 1 %}
+        primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volume
+            params
+                openrc={{ ha_storage.openrc }}
+                volume_id={{ item }}
+{% endif %}
+{% if ha_storage.cinder_volumes | length > 1 %}
+        primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volumes
+            params
+                openrc={{ ha_storage.openrc }}
+                volume_ids={{ ha_storage.cinder_volumes | map('quote') | join(',') }}
+                minimum_volumes_number={{ ha_storage.cinder_volumes | length - 1 }}
+{% endif %}
+
+        primitive {{ ha_storage.volume_group }}-cinder-delay Delay
+            op start delay=10
+            op stopd delay=0
+            op monitor delay=0
+{% endif %}
+
+{% for item in ha_storage.filesystems %}
+        primitive "{{ ha_storage.volume_group }}_{{ item.lv }}" Filesystem
+            params
+                 directory="{{ item.mountpoint }}"
+                 device="/dev/{{ ha_storage.volume_group }}/{{ item.lv }}"
+                 fstype="{{ item.fstype }}"
+            op monitor timeout=40 interval=20
+            op start timeout=60 interval=0
+            op stop timeout=60 interval=0
+
+{% endfor %}
+        group g-{{ ha_storage.volume_group }}
+{% if ha_storage.cinder_volumes is defined %}
+            {{ ha_storage.volume_group }}-cinder-delay
+{% endif %}
+            {{ ha_storage.volume_group }}_vg
+{% for item in ha_storage.filesystems %}
+            {{ ha_storage.volume_group }}_{{ item.lv }}
+{% endfor %}
+{% if ha_storage.append_resources is defined %}
+{% for item in ha_storage.append_resources %}
+            {{ item.name }}
+{% endfor %}
+{% endif %}
+
+        location loc_g-{{ ha_storage.volume_group }} g-{{ ha_storage.volume_group }}
+            rule -inf: "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}"
