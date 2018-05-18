@@ -3,10 +3,36 @@ ansible-ha-storage
 
 This role is used to create and manage filesystems using corosync / pacemaker.
 
+Two types of storage are supported: ZFS and cLVM/LVM.
+
+According to the OS, pcs or crmsh are installed:
+
+* pcs: RedHat-based systems ;
+* crmsh: the others.
+
+The playbook is tested on :
+
+* CentOS and Ubuntu (on a daily basis) ;
+* FreeBSD (sometimes).
+
+Using crmsh allows us to generate crm scripts per pool / volume group.
+
 Requirements
 ------------
 
+Storage provisionning:
 
+* in an Openstack environment, a valid openrc file and some existing volumes 
+are required ;
+* in a physical environment, the LUNs need to be mapped to the servers and 
+their WWNs are known.
+
+
+Cluster configuration:
+
+* the resource placement is made thanks to attributes. The nodes must have these 
+values defined ;
+* the cluster must be healthy, ie. with quorum and all nodes online.
 
 Role Variables
 --------------
@@ -16,7 +42,8 @@ A list of mountpoints needs to be given.
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+This playbook is a standalone playbook. However, it is co-developed with 
+[ansible-ha-cluster](https://github.com/mgrzybek/ansible-ha-cluster).
 
 Example Playbook
 ----------------
