@@ -3,7 +3,7 @@ ansible-ha-storage
 
 This role is used to create and manage filesystems using corosync / pacemaker.
 
-Two types of storage are supported: ZFS and cLVM/LVM.
+Two types of storage are supported: ZFS and cLVM / LVM.
 
 According to the OS, pcs or crmsh are installed:
 
