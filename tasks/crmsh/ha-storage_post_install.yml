@@ -119,7 +119,7 @@
       when:
           - ha_storage_fs | lower == 'zfs'
           - ls_luns_result.stderr_lines | length == 0
-      run_once: true
+
   when:
     - not ha_storage.cinder_volumes is defined
     - not ha_storage.openrc is defined
@@ -143,7 +143,10 @@
         - post_cinder_bloc_devices.stdout_lines|length > pre_cinder_bloc_devices.stdout_lines|length
 
     - name: VG create
-      lvg: vg={{ ha_storage.volume_group }} pvs={{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(",") }} vg_options="{{ vg_options }}"
+      lvg:
+        vg: "{{ ha_storage.volume_group }}"
+        pvs: "{{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(',') }}"
+        vg_options: "{{ vg_options }}"
       #run_once: true
       when:
         - ha_storage_fs | lower != 'zfs'
