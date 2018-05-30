@@ -73,6 +73,7 @@
       wait_for: timeout=60
       delegate_to: localhost
       run_once: true
+      become: false
 
     - name: Get the existing block devices from /dev
       shell: ls /dev/vd? | tr ' ' '\n'

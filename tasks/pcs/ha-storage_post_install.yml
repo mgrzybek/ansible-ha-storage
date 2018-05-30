@@ -99,6 +99,12 @@
       delay: 10
       run_once: true
 
+    - name: Sleep for 60 seconds and continue with play
+      wait_for: timeout=60
+      delegate_to: localhost
+      run_once: true
+      become: false
+
     - name: Get the existing block devices from /dev
       shell: ls /dev/vd? | tr ' ' '\n'
       register: post_cinder_bloc_devices
@@ -112,14 +118,28 @@
 # 1. a. pvcreate
 #    b. vgcreate
 #
+#
+- set_fact:
+    create_datasets: false
+
 - name: Physical volume group building
   block:
-    - debug: msg='{{ ha_storage|json_query("luns[*].id") }}'
+    - name: Check luns availability
+      shell: ls {{ ha_storage|json_query("luns[*].id")|join(" ") }} || exit 0
+      register: ls_luns_result
+
+    - set_fact:
+        create_datasets: true
+      when: ls_luns_result.stderr_lines | length == 0
 
     - name: VG create
-      lvg: vg={{ ha_storage.volume_group }} pvs={{ ha_storage|json_query("luns[*].id")|join(",") }} vg_options="{{ vg_options }}"
+      lvg:
+          vg: "{{ ha_storage.volume_group }}"
+          pvs: "{{ ha_storage|json_query('luns[*].id')|join(',') }}"
+          vg_options: "{{ vg_options }}"
       when:
         - ha_storage_fs | lower != 'zfs'
+        - ls_luns_result.stderr_lines | length == 0
 
     - name: zpool create
       shell: >
@@ -130,8 +150,8 @@
               {{ ha_storage|json_query("luns[*].id")|join(" ") }}
       when:
         - ha_storage_fs | lower == 'zfs'
+        - ls_luns_result.stderr_lines | length == 0
 
-  run_once: true
   when:
     - not ha_storage.cinder_volumes is defined
     - not ha_storage.openrc is defined
@@ -146,30 +166,42 @@
     - name: Check if volume already exists
       shell: pvs
       register: pvs_result
+      when: ha_storage_fs | lower != 'zfs'
+
+    - set_fact:
+        create_datasets: true
+      when:
+        - pre_cinder_bloc_devices.stdout_lines is defined
+        - post_cinder_bloc_devices.stdout_lines|length > pre_cinder_bloc_devices.stdout_lines|length
 
     - name: VG create
-      lvg: vg={{ ha_storage.volume_group }} pvs={{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(",") }} vg_options="{{ vg_options }}"
+      lvg:
+        vg: "{{ ha_storage.volume_group }}"
+        pvs: "{{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(',') }}"
+        vg_options: "{{ vg_options }}"
       #run_once: true
       when:
         - ha_storage_fs | lower != 'zfs'
         - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
         - pre_cinder_bloc_devices.stdout_lines is defined
         - pvs_result.stdout.find(ha_storage.volume_group) < 0
-        - post_cinder_bloc_devices.stdout_lines|length > pre_cinder_bloc_devices.stdout_lines|length
 
     - name: zpool create
       shell: >
           crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
-          zpool create -R {{ ha_storage_zpool_mountpoint }} {{ ha_storage.volume_group }} raidz1 {{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(",") }}
+          zpool create -R {{ ha_storage_zpool_mountpoint }} \
+              {{ ha_storage.volume_group }} \
+              raidz1 \
+              {{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(",") }}
       when:
         - ha_storage_fs | lower == 'zfs'
         - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
-        - pre_cinder_bloc_devices.stdout_lines is defined
-        - post_cinder_bloc_devices.stdout_lines|length > pre_cinder_bloc_devices.stdout_lines|length
+        - create_datasets == true
 
   when:
     - ha_storage.cinder_volumes is defined
     - ha_storage.openrc is defined
+
 #
 # 2. a. resource group
 #
@@ -305,6 +337,9 @@
 #    c. mkfs
 - name: Create the datasets
   block:
+    #- name: Rescan storage
+    #  command: lvscan
+
     - include_tasks: ha-storage_post_install_lvm_volume.yml
       with_items: "{{ ha_storage.filesystems }}"
       when:
@@ -319,3 +354,18 @@
     - ha_storage.filesystems is defined
     - ha_storage.filesystems | length > 0
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+
+# Services
+- name: Add the appending resources
+  block:
+    - name: Get group configuration
+      command: pcs resource show g-{{ ha_storage.volume_group }}
+      register: pcs_resource_show
+
+    - name: Append resources to the group
+      command: pcs resource group add g-{{ ha_storage.volume_group }} {{ item.name }}
+      with_items: ha_storage.append_resources
+      when: pcs_resource_show.stdout.find(item.name) < 0
+  when:
+    - ha_storage.append_resources is defined
+    - ha_storage.append_resources | length > 0
