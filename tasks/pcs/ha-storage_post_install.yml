@@ -365,8 +365,9 @@
     - name: Append resources to the group
       command: pcs resource group add g-{{ ha_storage.volume_group }} {{ item.name }}
       with_items: "{{ ha_storage.append_resources }}"
-      when: pcs_resource_show.stdout.find(item.name) < 0
-
+      when: pcs_resource_show.stdout.find(item.name + " (") < 0
+     run_once: true
+ 
   run_once: true
   when:
     - ha_storage.append_resources is defined
