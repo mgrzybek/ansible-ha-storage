@@ -40,12 +40,12 @@
   when:
     - pcs_group_conf.stdout.find(item.lv) < 0
 
-- name: Check "{{ ha_storage.volume_group }}_vg"
-  shell: crm_resource --locate --resource "{{ ha_storage.volume_group }}_vg"
-  register: crm_resource_locate_vg
+- name: Check "{{ ha_storage.volume_group }}-vg"
+  shell: crm_resource --locate --resource "{{ ha_storage.volume_group }}-vg"
+  register: crm_resource_locate-vg
   run_once: true
 
-- name: Cleanup "{{ ha_storage.volume_group }}_vg"
-  shell: pcs resource cleanup {{ ha_storage.volume_group }}_vg
-  when: crm_resource_locate_vg.stdout.find('NOT') > -1
+- name: Cleanup "{{ ha_storage.volume_group }}-vg"
+  shell: pcs resource cleanup {{ ha_storage.volume_group }}-vg
+  when: crm_resource_locate-vg.stdout.find('NOT') > -1
   run_once: true

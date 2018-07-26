@@ -9,7 +9,7 @@
 
   actions:
     - cib: |
-        primitive {{ ha_storage.volume_group }}_vg LVM
+        primitive {{ ha_storage.volume_group }}-vg LVM
             params volgrpname={{ ha_storage.volume_group }}
             op monitor timeout=30 interval=10
 {% if ha_storage.cinder_volumes is defined %}
@@ -48,7 +48,7 @@
 {% if ha_storage.cinder_volumes is defined %}
             {{ ha_storage.volume_group }}-cinder-delay
 {% endif %}
-            {{ ha_storage.volume_group }}_vg
+            {{ ha_storage.volume_group }}-vg
 {% for item in ha_storage.filesystems %}
             {{ ha_storage.volume_group }}_{{ item.lv }}
 {% endfor %}

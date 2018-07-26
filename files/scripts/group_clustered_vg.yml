@@ -36,14 +36,14 @@
 
   actions:
     - cib: |
-        primitive {{id}}_vg LVM
+        primitive {{id}}-vg LVM
          params volgrpname={{id}} exclusive={{exclusive}} partial_activation=true
          op monitor timeout=30 interval=10
          op start timeout=30 interval=0
          op stop timeout=30 interval=0
 
     - cib: |
-        group g-{{id}} {{id}}_vg
+        group g-{{id}} {{id}}-vg
 
     - cib: |
         location loc_{{id}} g-{{id}}

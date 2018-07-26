@@ -207,9 +207,9 @@
 #
 - name: Create resource group (LVM)
   block:
-    - name: Create resource {{ ha_storage.volume_group }}_vg
+    - name: Create resource {{ ha_storage.volume_group }}-vg
       command: >
-        pcs resource create {{ ha_storage.volume_group }}_vg LVM \
+        pcs resource create {{ ha_storage.volume_group }}-vg LVM \
             volgrpname={{ ha_storage.volume_group }} \
             op monitor timeout=30 interval=10 \
             --group g-{{ ha_storage.volume_group }} \
@@ -225,13 +225,13 @@
       when:
         - not ha_storage.cinder_volumes is defined
 
-    - name: Enable {{ ha_storage.volume_group }}_vg
+    - name: Enable {{ ha_storage.volume_group }}-vg
       command: >
-        pcs resource enable {{ ha_storage.volume_group }}_vg
+        pcs resource enable {{ ha_storage.volume_group }}-vg
 
   when:
     - ha_storage_fs | lower != 'zfs'
-    - pcs_config.stdout.find(ha_storage.volume_group + '_vg') < 0
+    - pcs_config.stdout.find(ha_storage.volume_group + '-vg') < 0
   run_once: true
 
 - name: Create resource group (ZFS)
