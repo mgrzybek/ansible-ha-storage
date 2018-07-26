@@ -58,5 +58,10 @@
 {% endfor %}
 {% endif %}
 
-        location loc_g-{{ ha_storage.volume_group }} g-{{ ha_storage.volume_group }}
+        location loc_attr_g-{{ ha_storage.volume_group }} g-{{ ha_storage.volume_group }}
             rule -inf: "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}"
+
+{% if ha_storage.cinder_volumes is defined %}
+        location loc_openstack_g-{{ ha_storage.volume_group }} g-{{ ha_storage.volume_group }}
+            rule openstack is defined
+{% endif %}

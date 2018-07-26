@@ -215,13 +215,21 @@
             --group g-{{ ha_storage.volume_group }} \
             --disabled
 
-    - name: Add constraint
+    - name: Add constraint ({{ ha_storage_cluster_attribute_name }} == {{ ha_storage_cluster_attribute_value }})
       command: >
         pcs constraint location g-{{ ha_storage.volume_group }} \
             rule \
                 "{{ ha_storage_cluster_attribute_name }}" \
                 eq \
                 "{{ ha_storage_cluster_attribute_value }}"
+      when:
+        - not ha_storage.cinder_volumes is defined
+
+    - name: Add constraint (openstack_id is defined)
+      command: >
+        pcs constraint location g-{{ ha_storage.volume_group }} \
+            rule \
+                defined openstack_id
       when:
         - not ha_storage.cinder_volumes is defined
 
