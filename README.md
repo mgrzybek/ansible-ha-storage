@@ -135,6 +135,12 @@ Example Playbook
 
       roles:
       - { role: ansible-ha-storage }
+
+      post_tasks:
+        - name: Start postgresql resource
+          command: crm resource start pgsql
+          run_once: true
+
       vars:
         ha_storage:
           openrc: /etc/openrc.sh
