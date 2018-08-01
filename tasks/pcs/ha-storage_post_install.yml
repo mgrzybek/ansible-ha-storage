@@ -61,7 +61,8 @@
             --group g-{{ ha_storage.volume_group }} \
             --after {{ ha_storage.volume_group }}-cinder && \
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
-            "{{ ha_storage_cluster_attribute_name }}" eq "{{ ha_storage_cluster_attribute_value }}" && \
+            score=-INFINITY \
+            "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}" && \
         pcs resource enable {{ ha_storage.volume_group }}-cinder
       with_items: "{{ ha_storage.cinder_volumes }}"
       run_once: true
@@ -83,11 +84,18 @@
             --group g-{{ ha_storage.volume_group }} \
             --after {{ ha_storage.volume_group }}-cinder && \
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
-            "{{ ha_storage_cluster_attribute_name }}" eq "{{ ha_storage_cluster_attribute_value }}" && \
+            score=-INFINITY  \
+            "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}" && \
         pcs resource enable {{ ha_storage.volume_group }}-cinder
       run_once: true
       when:
         - ha_storage.cinder_volumes | length > 1
+
+    - name: Sleep for 60 seconds and continue with play
+      wait_for: timeout=60
+      delegate_to: localhost
+      run_once: true
+      become: false
 
     - name: Wait for the Cinder resource to be running
       shell: >
@@ -98,12 +106,6 @@
       retries: 6
       delay: 10
       run_once: true
-
-    - name: Sleep for 60 seconds and continue with play
-      wait_for: timeout=60
-      delegate_to: localhost
-      run_once: true
-      become: false
 
     - name: Get the existing block devices from /dev
       shell: ls /dev/vd? | tr ' ' '\n'

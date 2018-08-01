@@ -59,6 +59,12 @@
       when:
         - ha_storage.cinder_volumes | length > 1
 
+    - name: Sleep for 60 seconds and continue with play
+      wait_for: timeout=60
+      delegate_to: localhost
+      run_once: true
+      become: false
+
     - name: Wait for the Cinder resource to be running
       shell: >
           crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder \
@@ -68,12 +74,6 @@
       retries: 6
       delay: 10
       run_once: true
-
-    - name: Sleep for 60 seconds and continue with play
-      wait_for: timeout=60
-      delegate_to: localhost
-      run_once: true
-      become: false
 
     - name: Get the existing block devices from /dev
       shell: ls /dev/vd? | tr ' ' '\n'
