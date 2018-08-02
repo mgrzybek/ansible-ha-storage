@@ -63,6 +63,9 @@
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
             score=-INFINITY \
             "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}" && \
+        pcs constraint location g-{{ ha_storage.volume_group }} \
+            score=-INFINITY \
+            not_defined openstack_id && \
         pcs resource enable {{ ha_storage.volume_group }}-cinder
       with_items: "{{ ha_storage.cinder_volumes }}"
       run_once: true
@@ -86,6 +89,9 @@
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
             score=-INFINITY  \
             "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}" && \
+        pcs constraint location g-{{ ha_storage.volume_group }} \
+            score=-INFINITY \
+            not_defined openstack_id && \
         pcs resource enable {{ ha_storage.volume_group }}-cinder
       run_once: true
       when:
