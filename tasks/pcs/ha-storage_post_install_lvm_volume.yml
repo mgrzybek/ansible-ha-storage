@@ -7,6 +7,10 @@
   register: crm_resource_locate_group
   run_once: true
 
+- fail: msg="g-{{ ha_storage.volume_group }} cannot be running at several locations at the same time ({{ crm_resource_locate_group.stdout_lines | join(' ') }})"
+  when: crm_resource_locate_group.stdout_lines | length > 1
+  run_once: true
+
 - name: LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
   lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
   when:
@@ -23,13 +27,13 @@
     - item.fstype != "tmpfs"
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
 
-- name: Check group configuration "{{ ha_storage.volume_group }}_rg"
+- name: Check group configuration "g-{{ ha_storage.volume_group }}"
   shell: pcs resource show g-{{ ha_storage.volume_group }} | fgrep Resource
   register: pcs_group_conf
 
-- name: Create primitive "{{ ha_storage.volume_group }}_{{ item.lv }}"
+- name: Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}"
   shell: >
-    pcs resource create "{{ ha_storage.volume_group }}_{{ item.lv }}" Filesystem \
+    pcs resource create "{{ ha_storage.volume_group }}-{{ item.lv }}" Filesystem \
         directory="{{ item.mountpoint }}" \
         device="/dev/{{ ha_storage.volume_group }}/{{ item.lv }}" \
         fstype="{{ item.fstype }}" \
@@ -42,10 +46,10 @@
 
 - name: Check "{{ ha_storage.volume_group }}-vg"
   shell: crm_resource --locate --resource "{{ ha_storage.volume_group }}-vg"
-  register: crm_resource_locate-vg
+  register: crm_resource_locate_vg
   run_once: true
 
 - name: Cleanup "{{ ha_storage.volume_group }}-vg"
   shell: pcs resource cleanup {{ ha_storage.volume_group }}-vg
-  when: crm_resource_locate-vg.stdout.find('NOT') > -1
+  when: crm_resource_locate_vg.stdout.find('NOT') > -1
   run_once: true
