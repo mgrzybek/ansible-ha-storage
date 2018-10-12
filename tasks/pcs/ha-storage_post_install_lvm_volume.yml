@@ -3,7 +3,7 @@
 - name: Locate the volume group resource "g-{{ ha_storage.volume_group }}"
   shell: >
     crm_resource --locate --resource "g-{{ ha_storage.volume_group }}" \
-        | awk '{print $NF}'
+        | awk '{print $NF}' | sort -u
   register: crm_resource_locate_group
   run_once: true
 
