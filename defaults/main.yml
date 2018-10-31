@@ -30,3 +30,7 @@ ha_storage_use_sfex_ra_github: false
 
 # Do we enable the cluster attribute for LVM?
 ha_storage_use_clvm: true
+
+# Name of the resource used to get openstack_id attribute
+# Used for ordering
+ha_storage_openstack_cloud_info_resource:

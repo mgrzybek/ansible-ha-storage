@@ -66,6 +66,9 @@
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
             score=-INFINITY \
             not_defined openstack_id && \
+        pcs constraint order \
+            start {{ ha_storage_openstack_cloud_info_resource }} \
+            then g-{{ ha_storage.volume_group }} && \
         pcs resource enable {{ ha_storage.volume_group }}-cinder
       with_items: "{{ ha_storage.cinder_volumes }}"
       run_once: true
@@ -92,6 +95,9 @@
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
             score=-INFINITY \
             not_defined openstack_id && \
+        pcs constraint order \
+            start {{ ha_storage_openstack_cloud_info_resource }} \
+            then g-{{ ha_storage.volume_group }} && \
         pcs resource enable {{ ha_storage.volume_group }}-cinder
       run_once: true
       when:

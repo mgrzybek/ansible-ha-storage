@@ -6,6 +6,10 @@
       when:
         - ha_storage_use_sfex == true
         - ha_storage.cinder_volumes | length > 1
+
+    - fail: msg="No cloud info resource given"
+      when:
+        -  ha_storage_openstack_cloud_info_resource == None or ha_storage_openstack_cloud_info_resource | length == 0
   when:
     - ha_storage.cinder_volumes is defined
 
