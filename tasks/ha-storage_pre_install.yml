@@ -83,7 +83,9 @@
   with_items:
    - lvm2-lvmetad.socket
    - lvm2-lvmetad.service
-  when: ha_storage_fs != "zfs"
+  when:
+   - ha_storage_fs != "zfs"
+   - ha_storage.cinder_volumes is not defined
 
 # Deploy lock manager and cluster lvm
 - name: Enable cluster lvm

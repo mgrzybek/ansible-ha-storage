@@ -193,7 +193,6 @@
         vg: "{{ ha_storage.volume_group }}"
         pvs: "{{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(',') }}"
         vg_options: "{{ vg_options }}"
-      #run_once: true
       when:
         - ha_storage_fs | lower != 'zfs'
         - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
@@ -247,9 +246,9 @@
       when:
         - not ha_storage.cinder_volumes is defined
 
-    - name: Enable {{ ha_storage.volume_group }}-vg
-      command: >
-        pcs resource enable {{ ha_storage.volume_group }}-vg
+#    - name: Enable {{ ha_storage.volume_group }}-vg
+#      command: >
+#        pcs resource enable {{ ha_storage.volume_group }}-vg
 
   when:
     - ha_storage_fs | lower != 'zfs'
@@ -290,7 +289,9 @@
 - name: Locate the resource group
   shell: crm_resource --resource g-{{ ha_storage.volume_group }} --locate
   register: crm_resource_locate_group
-  run_once: true
+  until: crm_resource_locate_group.stdout.find("NOT running") < 0
+  retries: 5
+  delay: 10
 
 #
 # sfex stuff
@@ -357,6 +358,11 @@
 # 3. a. lvcreate
 #    b. add resource to group
 #    c. mkfs
+
+#- name: Freeze the VG location
+#  command: pcs resource move g-{{ ha_storage.volume_group }} {{ ansible_hostname }}
+#  when: crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+
 - name: Create the datasets
   block:
     #- name: Rescan storage
@@ -393,3 +399,8 @@
   when:
     - ha_storage.append_resources is defined
     - ha_storage.append_resources | length > 0
+
+- name: Enable the VG resource
+  run_once: true
+  command: pcs resource enable {{ ha_storage.volume_group }}-vg
+  when: ha_storage_fs | lower != 'zfs'
