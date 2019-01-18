@@ -172,12 +172,12 @@
 
 - name: Cinder volume group building
   block:
-    - name: Locate the volumes
+    - name: Locate the cinder volume
       shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
       register: crm_resource_locate_cinder
       run_once: true
 
-    - name: Check if volume already exists
+    - name: Check if LVM physical volume already exists
       shell: pvs
       register: pvs_result
       when: ha_storage_fs | lower != 'zfs'
