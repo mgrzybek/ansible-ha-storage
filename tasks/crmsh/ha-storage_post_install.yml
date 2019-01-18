@@ -33,9 +33,9 @@
 # Openstack cinder devices
 - name: Openstack Cinder resources
   block:
-    - name: Get the existing block devices from /dev
-      shell: ls /dev/vd? | tr ' ' '\n'
-      register: pre_cinder_bloc_devices
+#    - name: Get the existing block devices from /dev
+#      shell: ls /dev/vd? | tr ' ' '\n'
+#      register: pre_cinder_bloc_devices
 
     - name: Openstack Cinder resources (mono-volume)
       shell: >
@@ -75,9 +75,9 @@
       delay: 10
       run_once: true
 
-    - name: Get the existing block devices from /dev
-      shell: ls /dev/vd? | tr ' ' '\n'
-      register: post_cinder_bloc_devices
+#    - name: Get the existing block devices from /dev
+#      shell: ls /dev/vd? | tr ' ' '\n'
+#      register: post_cinder_bloc_devices
 
   when:
     - ha_storage.cinder_volumes is defined
@@ -127,33 +127,43 @@
 
 - name: Cinder volume group building
   block:
-    - name: Locate the volumes
+    - name: Locate the cinder volume
       shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
       register: crm_resource_locate_cinder
       run_once: true
 
-    - name: Check if volume already exists
+    - name: Check if LVM physical volume already exists
       shell: pvs
       register: pvs_result
       when: ha_storage_fs | lower != 'zfs'
 
+    # The device id is generated using the last 20 characters of the cinder id
+    # We build a comma-separated list of devices
+    - set_fact:
+        temp_virtio_id_devices: "{% for id in ha_storage.cinder_volumes %}/dev/disk/by-id/virtio-{{ id[:20] }},{% endfor %}"
+
+    # We clean the last comma of the list
+    - set_fact:
+        virtio_id_devices: "{{ temp_virtio_id_devices[:-1] }}"
+
+    - name: Check volumes availability
+      shell: ls {{ virtio_id_devices | regex_replace(',', ' ') }} || exit 0
+      register: ls_cinder_result
+
     - set_fact:
         create_datasets: true
-      when:
-        - pre_cinder_bloc_devices.stdout_lines is defined
-        - post_cinder_bloc_devices.stdout_lines|length > pre_cinder_bloc_devices.stdout_lines|length
+      when: ls_cinder_result.stderr_lines | length == 0
 
     - name: VG create
       lvg:
         vg: "{{ ha_storage.volume_group }}"
-        pvs: "{{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(',') }}"
+        pvs: "{{ virtio_id_devices }}"
         vg_options: "{{ vg_options }}"
-      #run_once: true
       when:
         - ha_storage_fs | lower != 'zfs'
         - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
         - pvs_result.stdout.find(ha_storage.volume_group) < 0
-        - create_datasets == true
+        - create_datasets | lower == 'true'
 
     - name: zpool create
       shell: >
@@ -161,7 +171,7 @@
           zpool create -R {{ ha_storage_zpool_mountpoint }} \
               {{ ha_storage.volume_group }} \
               raidz1 \
-              {{ post_cinder_bloc_devices.stdout_lines | difference(pre_cinder_bloc_devices.stdout_lines) | join(",") }}
+              {{ virtio_id_devices | regex_replace(',', ' ') }}
       when:
         - ha_storage_fs | lower == 'zfs'
         - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
