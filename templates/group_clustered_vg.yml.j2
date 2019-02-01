@@ -50,6 +50,7 @@
 {% endfor %}
         group g-{{ ha_storage.volume_group }}
 {% if ha_storage.cinder_volumes is defined %}
+            {{ ha_storage.volume_group }}-cinder
             {{ ha_storage.volume_group }}-cinder-delay
 {% endif %}
             {{ ha_storage.volume_group }}-vg
@@ -67,7 +68,7 @@
 
 {% if ha_storage.cinder_volumes is defined %}
         location loc_openstack_g-{{ ha_storage.volume_group }} g-{{ ha_storage.volume_group }}
-            rule -inf: "openstack is not_defined"
+            rule -inf: not_defined openstack_id
 
         order order_openstack_g-{{ ha_storage.volume_group }} mandatory: {{ ha_storage_openstack_cloud_info_resource }} g-{{ ha_storage.volume_group }}
 {% endif %}
