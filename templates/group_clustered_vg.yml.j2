@@ -21,7 +21,7 @@
         primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volume
             params
                 openrc={{ ha_storage.openrc }}
-                volume_id={{ item }}
+                volume_id={{ ha_storage.cinder_volumes | join('') }}
 {% endif %}
 {% if ha_storage.cinder_volumes | length > 1 %}
         primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volumes
