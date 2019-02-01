@@ -54,7 +54,7 @@
 {% endif %}
             {{ ha_storage.volume_group }}-vg
 {% for item in ha_storage.filesystems %}
-            {{ ha_storage.volume_group }}_{{ item.lv }}
+            {{ ha_storage.volume_group }}-{{ item.lv }}
 {% endfor %}
 {% if ha_storage.append_resources is defined %}
 {% for item in ha_storage.append_resources %}
