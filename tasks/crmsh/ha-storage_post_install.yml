@@ -39,6 +39,7 @@
 
     - name: Openstack Cinder resources (mono-volume)
       shell: >
+        crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder || \
         crm configure primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volume \
             params \
                 openrc={{ ha_storage.openrc }} \
@@ -50,6 +51,7 @@
 
     - name: Openstack Cinder resources (multi-volumes)
       shell: >
+        crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder || \
         crm configure primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volumes \
             params \
                 openrc={{ ha_storage.openrc }} \
