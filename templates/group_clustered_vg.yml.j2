@@ -48,6 +48,21 @@
             op stop timeout=60 interval=0
 
 {% endfor %}
+
+{% for item in ha_storage.append_resources %}
+{% if item | length > 1 %}
+        primitive {{ item.name }} {{ item.type }}
+{% if item.params is defined and item.params | length > 0 %}
+        params
+{% for param in item.params %}
+            {{ param }}
+{% endfor %}
+{% endif %}
+{% for op in item.op %}
+        op {{ op }}
+{% endfor %}
+{% endfor %}
+
         group g-{{ ha_storage.volume_group }}
 {% if ha_storage.cinder_volumes is defined %}
             {{ ha_storage.volume_group }}-cinder

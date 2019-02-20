@@ -160,6 +160,47 @@ Example Playbook
           append_resources:
             - name: pgsql
 
+    - name: Clustered filesystems and append some resources to the group
+      hosts: all
+      pre_tasks:
+        - name: Install postgresql
+          apt: name={{ item }} state=present
+          with_items:
+            - postgresql 
+            - postgresql-common
+
+      roles:
+      - { role: ansible-ha-storage }
+
+      vars:
+        ha_storage:
+          openrc: /etc/openrc.sh
+          cinder_volumes:
+            - 55659db9-1bea-46e1-a894-4b257be72bdd
+            - 548ef897-32b6-4331-99b7-4823ac6680cd
+          volume_group: db
+          filesystems:
+            - lv: data
+              size: 20G
+              fstype: xfs
+              mountpoint: /srv/data
+            - lv: xlog
+              size: 2G
+              fstype: xfs
+              mountpoint: /srv/xlog
+          append_resources:
+            - name: pgsql
+              type: docker
+              params:
+                - allow_pull=true
+                - image=postgresql:11
+                - 'run_opts="-v /srv/data:/data"'
+              op:
+                - "monitor timeout=40 interval=20"
+                - "start timeout=60 interval=0"
+                - "stop timeout=60 interval=0"
+
+
 A dictionnary called ha-storage is needed. Three keys are present:
 * luns: a list of devices to use (the wwn and an alias to use)
 * volume_group: the name of the LVM VG or the zpool to create
