@@ -53,15 +53,16 @@
 {% if item | length > 1 %}
         primitive {{ item.name }} {{ item.type }}
 {% if item.params is defined and item.params | length > 0 %}
-        params
+            params
 {% for param in item.params %}
-            {{ param }}
+                {{ param }}
 {% endfor %}
 {% endif %}
 {% for op in item.op %}
-        op {{ op }}
+            op {{ op }}
 {% endfor %}
 {% endif %}
+
 {% endfor %}
 
         group g-{{ ha_storage.volume_group }}
