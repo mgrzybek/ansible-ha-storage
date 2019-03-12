@@ -96,12 +96,12 @@
 - name: Physical volume group building
   block:
     - name: Check luns availability
-      shell: ls {{ ha_storage|json_query("luns[*].id")|join(" ") }} || exit 0
-      register: ls_luns_result
+      shell: fdisk -l {{ ha_storage|json_query("luns[*].id")|join(" ") }} || exit 0
+      register: fdisk_luns_result
 
     - set_fact:
         create_datasets: true
-      when: ls_luns_result.stderr_lines | length == 0
+      when: fdisk_luns_result.stderr_lines | length == 0
 
     - name: VG create
       lvg:
@@ -110,7 +110,7 @@
           vg_options: "{{ vg_options }}"
       when:
         - ha_storage_fs | lower != 'zfs'
-        - ls_luns_result.stderr_lines | length == 0
+        - fdisk_luns_result.stderr_lines | length == 0
 
     - name: zpool create
       shell: >
@@ -121,7 +121,7 @@
             {{ ha_storage|json_query("luns[*].id")|join(" ") }}
       when:
           - ha_storage_fs | lower == 'zfs'
-          - ls_luns_result.stderr_lines | length == 0
+          - fdisk_luns_result.stderr_lines | length == 0
 
   when:
     - not ha_storage.cinder_volumes is defined
