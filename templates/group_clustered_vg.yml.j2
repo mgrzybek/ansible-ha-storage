@@ -30,11 +30,6 @@
                 volume_ids={{ ha_storage.cinder_volumes | map('quote') | join(',') }}
                 minimum_volumes_number={{ ha_storage.cinder_volumes | length - 1 }}
 {% endif %}
-
-        primitive {{ ha_storage.volume_group }}-cinder-delay Delay
-            op start delay=10
-            op stopd delay=0
-            op monitor delay=0
 {% endif %}
 
 {% for item in ha_storage.filesystems %}
@@ -68,7 +63,6 @@
         group g-{{ ha_storage.volume_group }}
 {% if ha_storage.cinder_volumes is defined %}
             {{ ha_storage.volume_group }}-cinder
-            {{ ha_storage.volume_group }}-cinder-delay
 {% endif %}
             {{ ha_storage.volume_group }}-vg
 {% for item in ha_storage.filesystems %}
