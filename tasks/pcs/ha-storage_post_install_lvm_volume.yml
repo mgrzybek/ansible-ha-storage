@@ -8,8 +8,20 @@
   run_once: true
 
 - fail: msg="g-{{ ha_storage.volume_group }} cannot be running at several locations at the same time ({{ crm_resource_locate_group.stdout_lines | join(' ') }})"
-  when: crm_resource_locate_group.stdout_lines | length > 1
+  when:
+    - crm_resource_locate_group is defined
+    - crm_resource_locate_group.stdout_lines | length > 1
   run_once: true
+
+- name: Wait for the volume to be available on the node
+  shell: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
+  register: fdisk_volumes
+  until: fdisk_volumes.stderr_lines | length == 0
+  retries: 60
+  delay: 30
+  when:
+    - item.fstype != "tmpfs"
+    - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
 
 - name: LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
   lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"

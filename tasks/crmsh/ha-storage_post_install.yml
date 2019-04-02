@@ -21,7 +21,7 @@
   shell: crm script run cloned_o2cb
   run_once: true
   #when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
-  when:  ha_storage_fs | lower == 'ocfs2'
+  when:  ha_storage_fs | lower == 'ocfs2'
 
 # Set aliases in multipath.conf
 

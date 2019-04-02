@@ -4,8 +4,8 @@
   package:
     name: "{{ ha_storage_clvm_packages }}"
     state: "{{ ha_storage_package_state }}"
-    update_cache: "{{ ansible_pkg_mgr == 'apt' | ternary('yes', omit) }}"
-    cache_valid_time: "{{ ansible_pkg_mgr == 'apt' | ternary(cache_timeout, omit) }}"
+    update_cache: "{{ (ansible_pkg_mgr == 'apt') | ternary('yes', omit) }}"
+    cache_valid_time: "{{ (ansible_pkg_mgr == 'apt') | ternary(cache_timeout, omit) }}"
   register: install_packages
   until: install_packages | success
   retries: 5
@@ -22,8 +22,8 @@
   package:
     name: "{{ ha_storage_ocfs2_packages }}"
     state: "{{ ha_storage_package_state }}"
-    update_cache: "{{ ansible_pkg_mgr == 'apt' | ternary('yes', omit) }}"
-    cache_valid_time: "{{ ansible_pkg_mgr == 'apt' | ternary(cache_timeout, omit) }}"
+    update_cache: "{{ (ansible_pkg_mgr == 'apt') | ternary('yes', omit) }}"
+    cache_valid_time: "{{ (ansible_pkg_mgr == 'apt') | ternary(cache_timeout, omit) }}"
   register: install_packages
   until: install_packages | success
   retries: 5
@@ -39,8 +39,8 @@
   package:
     name: "{{ ha_storage_zfs_packages }}"
     state: "{{ ha_storage_package_state }}"
-    update_cache: "{{ ansible_pkg_mgr == 'apt' | ternary('yes', omit) }}"
-    cache_valid_time: "{{ ansible_pkg_mgr == 'apt' | ternary(cache_timeout, omit) }}"
+    update_cache: "{{ (ansible_pkg_mgr == 'apt') | ternary('yes', omit) }}"
+    cache_valid_time: "{{ (ansible_pkg_mgr == 'apt') | ternary(cache_timeout, omit) }}"
   register: install_packages
   until: install_packages | success
   retries: 5
@@ -53,8 +53,8 @@
   package:
     name: "{{ ha_storage_xfs_packages }}"
     state: "{{ ha_storage_package_state }}"
-    update_cache: "{{ ansible_pkg_mgr == 'apt' | ternary('yes', omit) }}"
-    cache_valid_time: "{{ ansible_pkg_mgr == 'apt' | ternary(cache_timeout, omit) }}"
+    update_cache: "{{ (ansible_pkg_mgr == 'apt') | ternary('yes', omit) }}"
+    cache_valid_time: "{{ (ansible_pkg_mgr == 'apt') | ternary(cache_timeout, omit) }}"
   register: install_packages
   until: install_packages is success
   retries: 5

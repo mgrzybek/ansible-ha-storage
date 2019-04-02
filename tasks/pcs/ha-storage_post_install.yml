@@ -188,12 +188,12 @@
         virtio_id_devices: "{{ temp_virtio_id_devices[:-1] }}"
 
     - name: Check volumes availability
-      shell: ls {{ virtio_id_devices | regex_replace(',', ' ') }} || exit 0
-      register: ls_cinder_result
+      shell: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }} || exit 0
+      register: fdisk_cinder_result
 
     - set_fact:
         create_datasets: true
-      when: ls_cinder_result.stderr_lines | length == 0
+      when: fdisk_cinder_result.stderr_lines | length == 0
 
     - name: VG create
       lvg:
