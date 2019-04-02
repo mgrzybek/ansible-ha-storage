@@ -14,6 +14,10 @@
     - fail: msg="The volume ids are not given"
       when:
         - ha_storage.cinder_volumes | length == 0
+
+    - fail: msg="The volume ids are empty"
+      when: item == None or item | length != 37
+      with_items: "{{ ha_storage.cinder_volumes }}"
   when:
     - ha_storage.cinder_volumes is defined
 
