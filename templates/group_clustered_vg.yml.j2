@@ -30,6 +30,9 @@
                 volume_ids={{ ha_storage.cinder_volumes | map('quote') | join(',') }}
                 minimum_volumes_number={{ ha_storage.cinder_volumes | length - 1 }}
 {% endif %}
+            op monitor timeout=40 interval=20
+            op start timeout=120 interval=0
+            op stop timeout=120 interval=0
 {% endif %}
 
 {% for item in ha_storage.filesystems %}
