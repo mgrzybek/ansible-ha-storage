@@ -54,12 +54,6 @@
             volume_id={{ item }} \
             --group g-{{ ha_storage.volume_group }} \
             --disabled && \
-        pcs resource create {{ ha_storage.volume_group }}-cinder-delay Delay \
-            startdelay=10 \
-            stopdelay=0 \
-            mondelay=0 \
-            --group g-{{ ha_storage.volume_group }} \
-            --after {{ ha_storage.volume_group }}-cinder && \
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
             score=-INFINITY \
             "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}" && \
@@ -83,12 +77,6 @@
             minimum_volumes_number={{ ha_storage.cinder_volumes | length - 1 }} \
             --group g-{{ ha_storage.volume_group }}
             --disabled && \
-        pcs resource create {{ ha_storage.volume_group }}-cinder-delay Delay \
-            startdelay=10 \
-            stopdelay=0 \
-            mondelay=0 \
-            --group g-{{ ha_storage.volume_group }} \
-            --after {{ ha_storage.volume_group }}-cinder && \
         pcs constraint location g-{{ ha_storage.volume_group }} rule \
             score=-INFINITY  \
             "{{ ha_storage_cluster_attribute_name }}" ne "{{ ha_storage_cluster_attribute_value }}" && \
@@ -353,7 +341,7 @@
             op start timeout="30s" interval="0" \
             op stop timeout="30s" interval="0" \
             --group g-{{ ha_storage.volume_group }} \
-            --after {{ ha_storage.volume_group }}-cinder-delay
+            --after {{ ha_storage.volume_group }}-cinder
 
   when:
     - ha_storage_use_sfex == true
@@ -369,6 +357,13 @@
 #- name: Freeze the VG location
 #  command: pcs resource move g-{{ ha_storage.volume_group }} {{ ansible_hostname }}
 #  when: crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+
+# Set mountpoints' postmoint actions
+- include_tasks: ../ha-storage_post_install_postmounts.yml
+  when:
+    - ha_storage_fs | lower != 'zfs'
+    - ha_storage.filesystems is defined
+    - ha_storage.filesystems | length > 0
 
 - name: Create the datasets
   block:
@@ -390,6 +385,9 @@
     - ha_storage.filesystems | length > 0
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
 
+# Set mountpoints' permissions on the other nodes
+- include_tasks: ../ha-storage_post_install_mountpoints_acls.yml
+
 # Services
 - name: Add the appending resources
   block:
@@ -397,11 +395,19 @@
       command: pcs resource show g-{{ ha_storage.volume_group }}
       register: pcs_resource_show
 
-    - name: Append resources to the group
-      command: pcs resource group add g-{{ ha_storage.volume_group }} {{ item.name }}
-      with_items: "{{ ha_storage.append_resources }}"
+    - name: Create the resource to append
       when: pcs_resource_show.stdout.find(item.name + " (") < 0
- 
+      with_items: "{{ ha_storage.append_resources }}"
+      shell: >
+        pcs resource create {{ item.name }} {{ item.type }} \
+            {% for param in item.params %}
+                {{ param }} \
+            {% endfor %}
+            {% for op in item.op %}
+                op {{ op }} \
+            {% endfor %}
+            --group g-{{ ha_storage.volume_group }}
+
   run_once: true
   when:
     - ha_storage.append_resources is defined

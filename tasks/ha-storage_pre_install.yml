@@ -14,6 +14,14 @@
     - fail: msg="The volume ids are not given"
       when:
         - ha_storage.cinder_volumes | length == 0
+
+    - name: Do the given ids contain 37 characters?
+      delegate_to: localhost
+      become: no
+      run_once: true
+      shell: echo {{ item }} | wc -c | grep 37
+      with_items: "{{ ha_storage.cinder_volumes }}"
+
   when:
     - ha_storage.cinder_volumes is defined
 

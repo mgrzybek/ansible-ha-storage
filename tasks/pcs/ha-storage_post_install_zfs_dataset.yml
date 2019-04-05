@@ -18,4 +18,3 @@
   when:
     - item.size is undefined
     - item.lv is defined
-

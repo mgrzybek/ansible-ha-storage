@@ -25,3 +25,6 @@
 - import_tasks: pcs/ha-storage_post_install.yml
   tags: ha-storage-install-post
   when: ansible_os_family | lower == 'redhat'
+
+# Set mountpoints' permissions on the other nodes
+#- import_tasks: ../ha-storage_post_install_mountpoints_acls.yml

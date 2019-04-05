@@ -89,10 +89,24 @@ Example Playbook
           filesystems:
             - lv: data
               size: 20GB
-              mountpoint: data
+              mountpoint: /srv/data
+              owner: postgres
+              group: postgres
+              mode: 700
             - lv: xlog
               size: 2GB
-              mountpoint: xlog
+              mountpoint: /srv/xlog
+              owner: postgres
+              group: postgres
+              mode: 700
+            - lv: tmp
+              size: 2GB
+              mountpoint: /srv/tmp
+              owner: postgres
+              group: postgres
+              mode: 700
+              fstype: tmpfs
+              options: "uid=postgres,gid=postgres"
 
     - name: Create some clustered filesystems using a Cinder backend
       hosts: all

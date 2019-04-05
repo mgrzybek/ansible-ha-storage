@@ -213,3 +213,6 @@
 - name: Create the resources
   command: crm -w script run {{ ha_storage.volume_group }}
   run_once: true
+
+# Set mountpoints' permissions on the other nodes
+#- import_tasks: ../ha-storage_post_install_mountpoints_acls.yml

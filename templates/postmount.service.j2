@@ -1,0 +1,13 @@
+[Unit]
+Description=Set ACLs to {{ item.mountpoint }}
+
+[Service]
+Type=oneshot
+{% if item.mode is defined %}
+ExecStartPre=/bin/chmod {{ item.mode }} {{ item.mountpoint }}
+{% endif %}
+ExecStart=/bin/chown {{ item.owner }}:{{ item.group }} {{ item.mountpoint }}
+
+ExecStop=/bin/true
+RemainAfterExit=true
+StandardOutput=journal
