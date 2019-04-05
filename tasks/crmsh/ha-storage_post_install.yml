@@ -67,15 +67,11 @@
       until: cinder_location.stdout.find('is running on') > -1
       retries: 6
       delay: 10
-      run_once: true
 
 #
 # 1. a. pvcreate
 #    b. vgcreate
 #
-
-- set_fact:
-    create_datasets: false
 
 - name: Physical volume group building
   block:

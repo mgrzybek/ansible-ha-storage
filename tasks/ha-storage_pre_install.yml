@@ -132,3 +132,6 @@
   when:
     - ha_storage_fs != "zfs"
     - ha_storage_use_clvm == false
+
+- set_fact:
+    create_datasets: false
