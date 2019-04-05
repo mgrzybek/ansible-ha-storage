@@ -279,25 +279,25 @@
         pcs resource enable sfex
 
     - name: Create sfex volume
-      lvol: vg={{ ha_storage.volume_group }} lv=sfex size=10M
       when:
         - ha_storage_fs | lower != 'zfs'
+      lvol: vg={{ ha_storage.volume_group }} lv=sfex size=10M
 
     - name: Create sfex volume
+      when:
+        - ha_storage_fs | lower == 'zfs'
       shell: >
         zfs list | grep -q {{ ha_storage.volume_group }}/sfex || \
         zfs create "{{ ha_storage.volume_group }}/sfex" -o mountpoint=none
-      when:
-        - ha_storage_fs | lower == 'zfs'
 
     - name: Wait for the sfex resource to be running
-      shell: >
-        crm_resource --locate --resource sfex-clone \
-            || exit 0
       register: cinder_location
       until: cinder_location.stdout.find('is running on') > -1
       retries: 6
       delay: 10
+      shell: >
+        crm_resource --locate --resource sfex-clone \
+            || exit 0
 
     - name: Configure sfex partition
       command: sfex_init /dev/{{ ha_storage.volume_group }}/sfex
@@ -332,10 +332,10 @@
       block:
         - include_tasks: ../ha-storage_post_install_postmounts.yml
 
-        - include_tasks: ha-storage_post_install_lvm_volume.yml
-          with_items: "{{ ha_storage.filesystems }}"
-          when:
+        - when:
             - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+          include_tasks: ha-storage_post_install_lvm_volume.yml
+          with_items: "{{ ha_storage.filesystems }}"
 
     - when:
         - ha_storage_fs | lower == 'zfs'
