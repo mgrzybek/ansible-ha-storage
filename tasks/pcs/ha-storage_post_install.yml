@@ -347,9 +347,6 @@
         - ha_storage_fs | lower == 'zfs'
         - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
 
-# Set mountpoints' permissions on the other nodes
-- include_tasks: ../ha-storage_post_install_mountpoints_acls.yml
-
 # Services
 - name: Add the appending resources
   run_once: true
