@@ -36,7 +36,7 @@
     - ha_storage.openrc is defined
     - crm_config.stdout.find('g-' + ha_storage.volume_group) < 0
   block:
-    - name: Openstack Cinder resources (multi-volumes)
+    - name: Openstack Cinder resources
       shell: >
         crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder || \
         {% if ha_storage.cinder_volumes | length > 1 %}
