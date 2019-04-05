@@ -7,15 +7,15 @@
 
 # Cluster stuff
 - name: Set clvm and dlm resources
+  run_once: true
+  when:
+    - ha_storage_fs | lower != 'zfs'
+    - ha_storage_use_clvm == true
   shell: >
     crm -w script run cloned_clvm \
       size={{ ha_storage_cluster_nodes.stdout }} \
       attribute_name={{ ha_storage_cluster_attribute_name }} \
       attribute_value={{ ha_storage_cluster_attribute_value }}
-  when:
-    - ha_storage_fs | lower != 'zfs'
-    - ha_storage_use_clvm == true
-  run_once: true
 
 - name: Set ocfs2 resource
   shell: crm script run cloned_o2cb
@@ -32,34 +32,26 @@
 
 # Openstack cinder devices
 - name: Openstack Cinder resources
+  run_once: true
+  when:
+    - ha_storage.cinder_volumes is defined
+    - ha_storage.openrc is defined
+    - crm_config.stdout.find('g-' + ha_storage.volume_group) < 0
   block:
-#    - name: Get the existing block devices from /dev
-#      shell: ls /dev/vd? | tr ' ' '\n'
-#      register: pre_cinder_bloc_devices
-
-    - name: Openstack Cinder resources (mono-volume)
-      shell: >
-        crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder || \
-        crm configure primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volume \
-            params \
-                openrc={{ ha_storage.openrc }} \
-                volume_id={{ item }}
-      with_items: "{{ ha_storage.cinder_volumes }}"
-      run_once: true
-      when:
-        - ha_storage.cinder_volumes | length == 1
-
     - name: Openstack Cinder resources (multi-volumes)
       shell: >
         crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder || \
-        crm configure primitive {{ ha_storage.volume_group }}-cinder openstack-cinder-volumes \
+        {% ha_storage.cinder_volumes | length > 1 %}
+        crm configure primitive {{ ha_storage.volume_group }}-cinder ocf:heartbeat:openstack-cinder-volumes \
             params \
-                openrc={{ ha_storage.openrc }} \
                 volume_ids={{ ha_storage.cinder_volumes | map('quote') | join(',') }} \
-                minimum_volumes_number={{ ha_storage.cinder_volumes | length - 1 }}
-      run_once: true
-      when:
-        - ha_storage.cinder_volumes | length > 1
+                minimum_volumes_number={{ ha_storage.cinder_volumes | length - 1 }} \
+        {% else %}
+        crm configure primitive {{ ha_storage.volume_group }}-cinder ocf:heartbeat:openstack-cinder-volume \
+            params \
+                volume_id={{ ha_storage.cinder_volumes[0] }} \
+        {% endif %}
+                openrc={{ ha_storage.openrc }}
 
     - name: Sleep for 60 seconds and continue with play
       wait_for: timeout=60
@@ -77,14 +69,6 @@
       delay: 10
       run_once: true
 
-#    - name: Get the existing block devices from /dev
-#      shell: ls /dev/vd? | tr ' ' '\n'
-#      register: post_cinder_bloc_devices
-
-  when:
-    - ha_storage.cinder_volumes is defined
-    - ha_storage.openrc is defined
-    - crm_config.stdout.find('g-' + ha_storage.volume_group) < 0
 #
 # 1. a. pvcreate
 #    b. vgcreate
