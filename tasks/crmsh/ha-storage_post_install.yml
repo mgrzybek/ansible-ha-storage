@@ -23,9 +23,7 @@
   #when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
   when:  ha_storage_fs | lower == 'ocfs2'
 
-# Set aliases in multipath.conf
-
-# Discover VG
+# TODO: Set aliases in multipath.conf
 
 ######################################
 # Deploy storage
@@ -74,40 +72,41 @@
 #
 
 - name: Physical volume group building
+  when:
+    - not ha_storage.cinder_volumes is defined
+    - not ha_storage.openrc is defined
   block:
     - name: Check luns availability
       shell: fdisk -l {{ ha_storage|json_query("luns[*].id")|join(" ") }} || exit 0
       register: fdisk_luns_result
 
-    - set_fact:
-        create_datasets: true
-      when: fdisk_luns_result.stderr_lines | length == 0
+    - when: fdisk_luns_result.stderr_lines | length == 0
+      block:
+        - set_fact:
+            create_datasets: true
 
-    - name: VG create
-      lvg:
-          vg: "{{ ha_storage.volume_group }}"
-          pvs: '{{ ha_storage|json_query("luns[*].id")|join(",") }}'
-          vg_options: "{{ vg_options }}"
-      when:
-        - ha_storage_fs | lower != 'zfs'
-        - fdisk_luns_result.stderr_lines | length == 0
+        - name: VG create
+          when:
+            - ha_storage_fs | lower != 'zfs'
+          lvg:
+              vg: "{{ ha_storage.volume_group }}"
+              pvs: '{{ ha_storage|json_query("luns[*].id")|join(",") }}'
+              vg_options: "{{ vg_options }}"
 
-    - name: zpool create
-      shell: >
-        crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
-        zpool create -R {{ ha_storage_zpool_mountpoint }} \
-            {{ ha_storage.volume_group }} \
-            raidz1 \
-            {{ ha_storage|json_query("luns[*].id")|join(" ") }}
-      when:
-          - ha_storage_fs | lower == 'zfs'
-          - fdisk_luns_result.stderr_lines | length == 0
-
-  when:
-    - not ha_storage.cinder_volumes is defined
-    - not ha_storage.openrc is defined
+        - name: zpool create
+          when:
+            - ha_storage_fs | lower == 'zfs'
+          shell: >
+            crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
+            zpool create -R {{ ha_storage_zpool_mountpoint }} \
+                {{ ha_storage.volume_group }} \
+                raidz1 \
+                {{ ha_storage|json_query("luns[*].id")|join(" ") }}
 
 - name: Cinder volume group building
+  when:
+    - ha_storage.cinder_volumes is defined
+    - ha_storage.openrc is defined
   block:
     - name: Locate the cinder volume
       shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
@@ -115,9 +114,9 @@
       run_once: true
 
     - name: Check if LVM physical volume already exists
-      shell: pvs
-      register: pvs_result
       when: ha_storage_fs | lower != 'zfs'
+      register: pvs_result
+      shell: pvs
 
     # The device id is generated using the last 20 characters of the cinder id
     # We build a comma-separated list of devices
@@ -128,58 +127,56 @@
     - set_fact:
         virtio_id_devices: "{{ temp_virtio_id_devices[:-1] }}"
 
+    # TODO: use fdisk
     - name: Check volumes availability
-      shell: ls {{ virtio_id_devices | regex_replace(',', ' ') }} || exit 0
       register: ls_cinder_result
+      shell: ls {{ virtio_id_devices | regex_replace(',', ' ') }} || exit 0
 
-    - set_fact:
+    - when: ls_cinder_result.stderr_lines | length == 0
+      set_fact:
         create_datasets: true
-      when: ls_cinder_result.stderr_lines | length == 0
 
-    - name: VG create
-      lvg:
-        vg: "{{ ha_storage.volume_group }}"
-        pvs: "{{ virtio_id_devices }}"
-        vg_options: "{{ vg_options }}"
-      when:
-        - ha_storage_fs | lower != 'zfs'
-        - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
-        - pvs_result.stdout.find(ha_storage.volume_group) < 0
-        - create_datasets | lower == 'true'
-
-    - name: zpool create
-      shell: >
-          crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
-          zpool create -R {{ ha_storage_zpool_mountpoint }} \
-              {{ ha_storage.volume_group }} \
-              raidz1 \
-              {{ virtio_id_devices | regex_replace(',', ' ') }}
-      when:
-        - ha_storage_fs | lower == 'zfs'
-        - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
+    - when:
         - create_datasets == true
+        - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
+      block:
+        - name: VG create
+          when:
+            - ha_storage_fs | lower != 'zfs'
+            - pvs_result.stdout.find(ha_storage.volume_group) < 0
+          lvg:
+            vg: "{{ ha_storage.volume_group }}"
+            pvs: "{{ virtio_id_devices }}"
+            vg_options: "{{ vg_options }}"
 
-  when:
-    - ha_storage.cinder_volumes is defined
-    - ha_storage.openrc is defined
+
+        - name: zpool create
+          when:
+            - ha_storage_fs | lower == 'zfs'
+          shell: >
+            crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
+            zpool create -R {{ ha_storage_zpool_mountpoint }} \
+                {{ ha_storage.volume_group }} \
+                raidz1 \
+                {{ virtio_id_devices | regex_replace(',', ' ') }}
 
 # 2. a. lvcreate
 #    b. mkfs
 - name: Create the dataseets
-  block:
-    - include_tasks: ha-storage_post_install_lvm_volume.yml
-      with_items: "{{ ha_storage.filesystems }}"
-      when:
-        - ha_storage_fs | lower != 'zfs'
-
-    - include_tasks: ha-storage_post_install_zfs_dataset.yml
-      with_items: "{{ ha_storage.filesystems }}"
-      when:
-        - ha_storage_fs | lower == 'zfs'
   when:
     - ha_storage.filesystems is defined
     - ha_storage.filesystems | length > 0
     - create_datasets == true
+  block:
+    - when:
+        - ha_storage_fs | lower != 'zfs'
+      include_tasks: ha-storage_post_install_lvm_volume.yml
+      with_items: "{{ ha_storage.filesystems }}"
+
+    - when:
+        - ha_storage_fs | lower == 'zfs'
+      include_tasks: ha-storage_post_install_zfs_dataset.yml
+      with_items: "{{ ha_storage.filesystems }}"
 
 #
 # 3. a. create crm script

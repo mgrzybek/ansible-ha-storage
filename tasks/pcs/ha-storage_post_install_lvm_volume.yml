@@ -13,37 +13,37 @@
     - crm_resource_locate_group.stdout_lines | length > 1
   run_once: true
 
-- name: Wait for the volume to be available on the node
-  shell: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
-  register: fdisk_volumes
-  until: fdisk_volumes.stderr_lines | length == 0
-  retries: 60
-  delay: 30
-  when:
+- when:
     - item.fstype != "tmpfs"
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+  block:
+    - name: Wait for the volume to be available on the node
+      shell: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
+      register: fdisk_volumes
+      until: fdisk_volumes.stderr_lines | length == 0
+      retries: 60
+      delay: 30
 
-- name: LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
-  lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
-  when:
-    - item.fstype != "tmpfs"
-    - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+    - name: LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
+      lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
 
 - name: Cleanup the resource group
   shell: pcs resource cleanup g-{{ ha_storage.volume_group }}
   when: crm_resource_locate_group.stdout.find("NOT") > -1
 
 - name: LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
-  filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
   when:
     - item.fstype != "tmpfs"
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+  filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
 
 - name: Check group configuration "g-{{ ha_storage.volume_group }}"
   shell: pcs resource show g-{{ ha_storage.volume_group }} | fgrep Resource
   register: pcs_group_conf
 
 - name: Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}"
+  when:
+    - pcs_group_conf.stdout.find(item.lv) < 0
   shell: >
     pcs resource create "{{ ha_storage.volume_group }}-{{ item.lv }}" ocf:heartbeat:Filesystem \
         directory="{{ item.mountpoint }}" \
@@ -54,15 +54,13 @@
         op start timeout=60 interval=0 \
         op stop timeout=60 interval=0 \
         --group g-{{ ha_storage.volume_group }}
-  when:
-    - pcs_group_conf.stdout.find(item.lv) < 0
 
 - name: Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}-postmount"
+  when:
+    - pcs_group_conf.stdout.find(item.lv) < 0
   shell: >
     pcs resource create "{{ ha_storage.volume_group }}-{{ item.lv }}-postmount" systemd:postmount-{{ ha_storage.volume_group }}-{{ item.lv }} \
         --group g-{{ ha_storage.volume_group }}
-  when:
-    - pcs_group_conf.stdout.find(item.lv) < 0
 
 - name: Check "{{ ha_storage.volume_group }}-vg"
   shell: crm_resource --locate --resource "{{ ha_storage.volume_group }}-vg"
@@ -70,9 +68,7 @@
   run_once: true
 
 - name: Cleanup "{{ ha_storage.volume_group }}-vg"
+  when:
+    - crm_resource_locate_vg.stdout.find('NOT') > -1
   shell: pcs resource cleanup {{ ha_storage.volume_group }}-vg
-  when: crm_resource_locate_vg.stdout.find('NOT') > -1
   run_once: true
-
-# Set mountpoints' permissions on the other nodes
-#- import_tasks: ../ha-storage_post_install_mountpoints_acls.yml

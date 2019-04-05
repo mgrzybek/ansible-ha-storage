@@ -111,19 +111,19 @@
           when:
             - ha_storage_fs | lower != 'zfs'
           lvg:
-              vg: "{{ ha_storage.volume_group }}"
-              pvs: "{{ ha_storage|json_query('luns[*].id')|join(',') }}"
-              vg_options: "{{ vg_options }}"
+            vg: "{{ ha_storage.volume_group }}"
+            pvs: "{{ ha_storage|json_query('luns[*].id')|join(',') }}"
+            vg_options: "{{ vg_options }}"
 
         - name: zpool create
           when:
             - ha_storage_fs | lower == 'zfs'
           shell: >
-              crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
-              zpool create -R {{ ha_storage_zpool_mountpoint }} \
-                  {{ ha_storage.volume_group }} \
-                  raidz1 \
-                  {{ ha_storage|json_query("luns[*].id")|join(" ") }}
+            crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
+            zpool create -R {{ ha_storage_zpool_mountpoint }} \
+                {{ ha_storage.volume_group }} \
+                raidz1 \
+                {{ ha_storage|json_query("luns[*].id")|join(" ") }}
 
 - name: Cinder volume group building
   when:
@@ -175,11 +175,11 @@
           when:
             - ha_storage_fs | lower == 'zfs'
           shell: >
-              crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
-              zpool create -R {{ ha_storage_zpool_mountpoint }} \
-                  {{ ha_storage.volume_group }} \
-                  raidz1 \
-                  {{ virtio_id_devices | regex_replace(',', ' ') }}
+            crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
+            zpool create -R {{ ha_storage_zpool_mountpoint }} \
+                {{ ha_storage.volume_group }} \
+                raidz1 \
+                {{ virtio_id_devices | regex_replace(',', ' ') }}
 
 #
 # 2. a. resource group
@@ -285,15 +285,15 @@
 
     - name: Create sfex volume
       shell: >
-         zfs list | grep -q {{ ha_storage.volume_group }}/sfex || \
-         zfs create "{{ ha_storage.volume_group }}/sfex" -o mountpoint=none
+        zfs list | grep -q {{ ha_storage.volume_group }}/sfex || \
+        zfs create "{{ ha_storage.volume_group }}/sfex" -o mountpoint=none
       when:
         - ha_storage_fs | lower == 'zfs'
 
     - name: Wait for the sfex resource to be running
       shell: >
-          crm_resource --locate --resource sfex-clone \
-              || exit 0
+        crm_resource --locate --resource sfex-clone \
+            || exit 0
       register: cinder_location
       until: cinder_location.stdout.find('is running on') > -1
       retries: 6
@@ -327,7 +327,8 @@
     - ha_storage.filesystems is defined
     - ha_storage.filesystems | length > 0
   block:
-    - when: ha_storage_fs | lower != 'zfs'
+    - when:
+        - ha_storage_fs | lower != 'zfs'
       block:
         - include_tasks: ../ha-storage_post_install_postmounts.yml
 
@@ -336,11 +337,11 @@
           when:
             - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
 
-    - include_tasks: ha-storage_post_install_zfs_dataset.yml
-      with_items: "{{ ha_storage.filesystems }}"
-      when:
+    - when:
         - ha_storage_fs | lower == 'zfs'
         - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+      include_tasks: ha-storage_post_install_zfs_dataset.yml
+      with_items: "{{ ha_storage.filesystems }}"
 
 # Services
 - name: Add the appending resources

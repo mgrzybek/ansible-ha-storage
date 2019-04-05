@@ -1,11 +1,10 @@
 ---
 
-- name: LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
-  lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
-  when:
+- when:
     - item.fstype != "tmpfs"
+  block:
+    - name: LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
+      lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
 
-- name: LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
-  filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
-  when:
-    - item.fstype != "tmpfs"
+    - name: LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
+      filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
