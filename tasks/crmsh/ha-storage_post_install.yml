@@ -39,7 +39,7 @@
     - name: Openstack Cinder resources (multi-volumes)
       shell: >
         crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder || \
-        {% ha_storage.cinder_volumes | length > 1 %}
+        {% if ha_storage.cinder_volumes | length > 1 %}
             crm configure primitive {{ ha_storage.volume_group }}-cinder ocf:heartbeat:openstack-cinder-volumes \
                 params \
                     volume_ids={{ ha_storage.cinder_volumes | map('quote') | join(',') }} \
