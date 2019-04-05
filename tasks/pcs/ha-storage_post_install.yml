@@ -340,7 +340,7 @@
     - when:
         - ha_storage_fs | lower == 'zfs'
         - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
-      include_tasks: ha-storage_post_install_zfs_dataset.yml
+      include_tasks: ../ha-storage_post_install_zfs_dataset.yml
       with_items: "{{ ha_storage.filesystems }}"
 
 # Services

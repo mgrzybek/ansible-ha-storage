@@ -175,7 +175,7 @@
 
     - when:
         - ha_storage_fs | lower == 'zfs'
-      include_tasks: ha-storage_post_install_zfs_dataset.yml
+      include_tasks: ../ha-storage_post_install_zfs_dataset.yml
       with_items: "{{ ha_storage.filesystems }}"
 
 #
