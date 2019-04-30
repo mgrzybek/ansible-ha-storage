@@ -1,7 +1,7 @@
 ---
 
 - name: Get resources list
-  shell: pcs config
+  command: pcs config
   register: pcs_config
   run_once: true
 
@@ -28,7 +28,7 @@
     pcs resource enable g-clvm
 
 #- name: Set ocfs2 resource
-#  shell: crm script run cloned_o2cb
+#  command: crm script run cloned_o2cb
 #  run_once: true
 #  #when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
 #  when:  ha_storage_fs | lower == 'ocfs2'
@@ -247,7 +247,7 @@
         pcs resource enable {{ ha_storage.volume_group }}_z
 
 - name: Locate the resource group
-  shell: crm_resource --resource g-{{ ha_storage.volume_group }} --locate
+  command: crm_resource --resource g-{{ ha_storage.volume_group }} --locate
   register: crm_resource_locate_group
   until: crm_resource_locate_group.stdout.find("NOT running") < 0
   retries: 5
@@ -303,7 +303,7 @@
       command: sfex_init /dev/{{ ha_storage.volume_group }}/sfex
 
     - name: Add sfex resource
-      shell: >
+      command: >
         pcs resource create {{ ha_storage.volume_group }}-sfex \
             device="/dev/{{ ha_storage.volume_group }}/sfex" \
             collision_timeout=1 \
@@ -357,7 +357,7 @@
     - name: Create the resource to append
       when: pcs_resource_show.stdout.find(item.name + " (") < 0
       with_items: "{{ ha_storage.append_resources }}"
-      shell: >
+      command: >
         pcs resource create {{ item.name }} {{ item.type }} \
             {% for param in item.params %}
                 {{ param }} \
