@@ -109,29 +109,34 @@
 # Skip existing local VG to be managed by clvm
 # TODO: edit lvm.conf and volumes_list
 
-- set_fact:
+- name: Set LVM facts
+  set_fact:
     lvm_mirors: "{{ ha_storage.cinder_volumes | length - 1 }}"
   when:
     - ha_storage.cinder_volumes is defined
     - ha_storage_fs != "zfs"
 
-- set_fact:
+- name: Set LVM facts
+  set_fact:
     lvm_mirors: "{{ ha_storage.luns | length - 1 }}"
   when:
     - ha_storage.luns is defined
     - ha_storage_fs != "zfs"
 
-- set_fact:
+- name: Set LVM facts
+  set_fact:
     vg_options: "-cy"
   when:
     - ha_storage_fs != "zfs"
     - ha_storage_use_clvm == true
 
-- set_fact:
+- name: Set LVM facts
+  set_fact:
     vg_options: "-cn"
   when:
     - ha_storage_fs != "zfs"
     - ha_storage_use_clvm == false
 
-- set_fact:
+- name: Set default facts
+  set_fact:
     create_datasets: false
