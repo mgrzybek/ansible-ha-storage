@@ -1,7 +1,7 @@
 ---
 
 - name: Get resources list
-  shell: crm configure show
+  command: crm configure show
   register: crm_config
   run_once: true
 
@@ -11,14 +11,14 @@
   when:
     - ha_storage_fs | lower != 'zfs'
     - ha_storage_use_clvm == true
-  shell: >
+  command: >
     crm -w script run cloned_clvm \
       size={{ ha_storage_cluster_nodes.stdout }} \
       attribute_name={{ ha_storage_cluster_attribute_name }} \
       attribute_value={{ ha_storage_cluster_attribute_value }}
 
 - name: Set ocfs2 resource
-  shell: crm script run cloned_o2cb
+  command: crm script run cloned_o2cb
   run_once: true
   #when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
   when:  ha_storage_fs | lower == 'ocfs2'
@@ -116,7 +116,7 @@
     - name: Check if LVM physical volume already exists
       when: ha_storage_fs | lower != 'zfs'
       register: pvs_result
-      shell: pvs
+      command: pvs
 
     # The device id is generated using the last 20 characters of the cinder id
     # We build a comma-separated list of devices
