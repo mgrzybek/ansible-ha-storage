@@ -50,7 +50,8 @@
   become: no
   run_once: true
 
-- fail: msg="Found duplicated datasets in ha_storage.filesystems"
+- name: Check duplicates
+  fail: msg="Found duplicated datasets in ha_storage.filesystems"
   when: check_duplicated_lv.stdout_lines | length > 0
 
 - name: Check filesystems to detect duplicates
