@@ -2,16 +2,19 @@
 
 - name: Check variables for cinder-based volumes
   block:
-    - fail: msg="Cannot use sfex with mirors"
+    - name: Check sfex
+      fail: msg="Cannot use sfex with mirors"
       when:
         - ha_storage_use_sfex == true
         - ha_storage.cinder_volumes | length > 1
 
-    - fail: msg="No cloud info resource given"
+    - name: Check cloud info
+      fail: msg="No cloud info resource given"
       when:
         -  ha_storage_openstack_cloud_info_resource == None or ha_storage_openstack_cloud_info_resource | length == 0
 
-    - fail: msg="The volume ids are not given"
+    - name: Check volume ids
+      fail: msg="The volume ids are not given"
       when:
         - ha_storage.cinder_volumes | length == 0
 
@@ -27,7 +30,8 @@
 
 - name: Check variables for physical-based volumes
   block:
-    - fail: msg="Cannot use sfex with mirors"
+    - name: Check sfex
+      fail: msg="Cannot use sfex with mirors"
       when:
         - ha_storage_use_sfex == true
         - ha_storage.luns | length > 1
