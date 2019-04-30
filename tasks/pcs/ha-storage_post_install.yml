@@ -136,7 +136,7 @@
       run_once: true
 
     - name: Check if LVM physical volume already exists
-      shell: pvs
+      command: pvs
       register: pvs_result
       when:
         - ha_storage_fs | lower != 'zfs'
