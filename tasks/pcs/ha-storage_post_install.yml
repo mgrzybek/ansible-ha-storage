@@ -143,11 +143,13 @@
 
     # The device id is generated using the last 20 characters of the cinder id
     # We build a comma-separated list of devices
-    - set_fact:
+    - name: We build a comma-separated list of devices
+      set_fact:
         temp_virtio_id_devices: "{% for id in ha_storage.cinder_volumes %}/dev/disk/by-id/virtio-{{ id[:20] }},{% endfor %}"
 
     # We clean the last comma of the list
-    - set_fact:
+    - name: We clean the last comma of the list
+      set_fact:
         virtio_id_devices: "{{ temp_virtio_id_devices[:-1] }}"
 
     - name: Check volumes availability
@@ -155,6 +157,7 @@
       register: fdisk_cinder_result
 
     - when: fdisk_cinder_result.stderr_lines | length == 0
+      name: Set local facts
       set_fact:
         create_datasets: true
 
