@@ -101,7 +101,7 @@
 
 # Deploy lock manager and cluster lvm
 - name: Enable cluster lvm
-  shell: lvmconf --enable-cluster
+  command: lvmconf --enable-cluster
   when:
     - ha_storage_fs != "zfs"
     - ha_storage_use_clvm == true
