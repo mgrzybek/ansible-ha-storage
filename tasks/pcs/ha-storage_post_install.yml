@@ -101,6 +101,7 @@
       register: fdisk_luns_result
 
     - when: fdisk_luns_result.stderr_lines | length == 0
+      name: Set local facts
       set_fact:
         create_datasets: true
 
