@@ -7,7 +7,8 @@
   register: crm_resource_locate_group
   run_once: true
 
-- fail: msg="g-{{ ha_storage.volume_group }} cannot be running at several locations at the same time ({{ crm_resource_locate_group.stdout_lines | join(' ') }})"
+- name: Check that the resource is running at only one location
+  fail: msg="g-{{ ha_storage.volume_group }} cannot be running at several locations at the same time ({{ crm_resource_locate_group.stdout_lines | join(' ') }})"
   when:
     - crm_resource_locate_group is defined
     - crm_resource_locate_group.stdout_lines | length > 1
@@ -28,7 +29,7 @@
       lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
 
 - name: Cleanup the resource group
-  shell: pcs resource cleanup g-{{ ha_storage.volume_group }}
+  command: pcs resource cleanup g-{{ ha_storage.volume_group }}
   when: crm_resource_locate_group.stdout.find("NOT") > -1
 
 - name: LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
@@ -58,17 +59,17 @@
 - name: Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}-postmount"
   when:
     - pcs_group_conf.stdout.find(item.lv) < 0
-  shell: >
+  command: >
     pcs resource create "{{ ha_storage.volume_group }}-{{ item.lv }}-postmount" systemd:postmount-{{ ha_storage.volume_group }}-{{ item.lv }} \
         --group g-{{ ha_storage.volume_group }}
 
 - name: Check "{{ ha_storage.volume_group }}-vg"
-  shell: crm_resource --locate --resource "{{ ha_storage.volume_group }}-vg"
+  command: crm_resource --locate --resource "{{ ha_storage.volume_group }}-vg"
   register: crm_resource_locate_vg
   run_once: true
 
 - name: Cleanup "{{ ha_storage.volume_group }}-vg"
   when:
     - crm_resource_locate_vg.stdout.find('NOT') > -1
-  shell: pcs resource cleanup {{ ha_storage.volume_group }}-vg
+  command: pcs resource cleanup {{ ha_storage.volume_group }}-vg
   run_once: true
