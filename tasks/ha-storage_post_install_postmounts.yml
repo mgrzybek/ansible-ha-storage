@@ -8,4 +8,4 @@
     - item.group is defined
 
 - name: Reload systemd
-  command: systemctl daemon-reload
+  systemd: daemon_reload=yes
