@@ -1,6 +1,6 @@
 .PHONY: test # Testing YAML syntax
 test:
-	find . -type f -name *.yml | xargs ansible-lint
+	ansible-lint -x ANSIBLE0012 .
 
 .PHONY: help # This help message
 help:
