@@ -40,7 +40,7 @@
   filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
 
 - name: Check group configuration "g-{{ ha_storage.volume_group }}"
-  shell: 
+  shell:
     set -o pipefail ; \
     pcs resource show g-{{ ha_storage.volume_group }} \
     | fgrep Resource
