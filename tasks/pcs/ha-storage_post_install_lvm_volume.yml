@@ -19,7 +19,7 @@
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
   block:
     - name: Wait for the volume to be available on the node
-      shell: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
+      command: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
       register: fdisk_volumes
       until: fdisk_volumes.stderr_lines | length == 0
       retries: 60
