@@ -10,7 +10,7 @@
   run_once: true
   when:
     - ha_storage_fs | lower != 'zfs'
-    - ha_storage_use_clvm == true
+    - ha_storage_use_clvm | lower == 'true'
   command: >
     crm -w script run cloned_clvm \
       size={{ ha_storage_cluster_nodes.stdout }} \
@@ -140,7 +140,7 @@
         create_datasets: true
 
     - when:
-        - create_datasets == true
+        - create_datasets | lower == 'true'
         - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
       block:
         - name: VG create
@@ -169,7 +169,7 @@
   when:
     - ha_storage.filesystems is defined
     - ha_storage.filesystems | length > 0
-    - create_datasets == true
+    - create_datasets | lower == 'true'
   block:
     - when:
         - ha_storage_fs | lower != 'zfs'

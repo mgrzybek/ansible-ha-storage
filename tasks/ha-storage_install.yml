@@ -16,7 +16,7 @@
     - instal-zypper
   when:
     - ha_storage_fs != "zfs"
-    - ha_storage_use_clvm == true
+    - ha_storage_use_clvm | lower == 'true'
 
 - name: Install ocfs2 packages
   package:
@@ -92,7 +92,7 @@
     https_proxy: "{{ ha_storage_http_proxy }}"
   when:
     - ha_storage_use_zfs_ra_github is defined
-    - ha_storage_use_zfs_ra_github == true
+    - ha_storage_use_zfs_ra_github | lower == 'true'
     - ha_storage_fs == 'zfs'
 
 - name: Install sfex resource agent from github.com
@@ -101,5 +101,5 @@
     https_proxy: "{{ ha_storage_http_proxy }}"
   when:
     - ha_storage_use_sfex_ra_github is defined
-    - ha_storage_use_sfex_ra_github == true
-    - ha_storage_use_sfex == true
+    - ha_storage_use_sfex_ra_github | lower == 'true'
+    - ha_storage_use_sfex | lower == 'true'
