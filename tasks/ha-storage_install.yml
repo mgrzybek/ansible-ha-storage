@@ -1,6 +1,6 @@
 ---
 
-- name: Install clvm packages
+- name:  | Install clvm packages
   package:
     name: "{{ ha_storage_clvm_packages }}"
     state: "{{ ha_storage_package_state }}"
@@ -18,7 +18,7 @@
     - ha_storage_fs != "zfs"
     - ha_storage_use_clvm | lower == 'true'
 
-- name: Install ocfs2 packages
+- name:  | Install ocfs2 packages
   package:
     name: "{{ ha_storage_ocfs2_packages }}"
     state: "{{ ha_storage_package_state }}"
@@ -35,7 +35,7 @@
 #  when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
   when: ha_storage_fs | lower == "ocfs2"
 
-- name: Install zfs packages
+- name:  | Install zfs packages
   package:
     name: "{{ ha_storage_zfs_packages }}"
     state: "{{ ha_storage_package_state }}"
@@ -49,7 +49,7 @@
     - install-apt
   when: ha_storage_fs | lower == "zfs"
 
-- name: Install xfs packages
+- name:  | Install xfs packages
   package:
     name: "{{ ha_storage_xfs_packages }}"
     state: "{{ ha_storage_package_state }}"
@@ -64,29 +64,29 @@
   when: ha_storage_fs | lower == "xfs"
 
 - block:
-    - name: Install some crm scripts (directories)
+    - name:  | Install some crm scripts (directories)
       file: path={{ ha_storage_crm_scripts_root_path }}/{{ item }} state=directory
       with_items: "{{ ha_storage_crm_lvm_scripts }}"
       when: ha_storage_fs | lower != 'zfs'
 
-    - name: Install some crm scripts (files)
+    - name:  | Install some crm scripts (files)
       copy: src=scripts/{{ item }}.yml dest={{ ha_storage_crm_scripts_root_path }}/{{ item }}/main.yml
       with_items: "{{ ha_storage_crm_lvm_scripts }}"
       when: ha_storage_fs | lower != 'zfs'
 
-    - name: Install some crm scripts (directories)
+    - name:  | Install some crm scripts (directories)
       file: path={{ ha_storage_crm_scripts_root_path }}/{{ item }} state=directory
       with_items: "{{ ha_storage_crm_zfs_scripts }}"
       when: ha_storage_fs | lower == "zfs"
 
-    - name: Install some crm scripts (files)
+    - name:  | Install some crm scripts (files)
       copy: src=scripts/{{ item }}.yml dest={{ ha_storage_crm_scripts_root_path }}/{{ item }}/main.yml
       with_items: "{{ ha_storage_crm_zfs_scripts }}"
       when: ha_storage_fs | lower == "zfs"
 
   when: ansible_os_family | lower != 'redhat'
 
-- name: Install zfs resource agent on old Ubuntu version from github.com
+- name:  | Install zfs resource agent on old Ubuntu version from github.com
   get_url: url={{ ha_storage_zfs_resource_agent_url }} dest={{ ha_storage_crm_ra_root_path }} mode=0755
   environment:
     https_proxy: "{{ ha_storage_http_proxy }}"
@@ -95,7 +95,7 @@
     - ha_storage_use_zfs_ra_github | lower == 'true'
     - ha_storage_fs == 'zfs'
 
-- name: Install sfex resource agent from github.com
+- name:  | Install sfex resource agent from github.com
   get_url: url={{ ha_storage_sfex_resource_agent_url }} dest={{ ha_storage_crm_ra_root_path }} mode=0755
   environment:
     https_proxy: "{{ ha_storage_http_proxy }}"
