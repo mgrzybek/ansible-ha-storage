@@ -10,7 +10,7 @@
   run_once: true
   when:
     - ha_storage_fs | lower != 'zfs'
-    - ha_storage_use_clvm == true
+    - ha_storage_use_clvm | lower == 'true'
     - pcs_config.stdout.find('g-clvm') < 0
   shell: >
     pcs resource create dlm controld \
@@ -263,7 +263,7 @@
 #
 - name: sfex configuration
   when:
-    - ha_storage_use_sfex == true
+    - ha_storage_use_sfex | lower == 'true'
     - ha_storage.cinder_volumes | length == 1
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
     - pcs_config.stdout.find(ha_storage.volume_group + "sfex") < 0

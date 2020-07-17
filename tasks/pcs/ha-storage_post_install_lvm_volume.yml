@@ -2,6 +2,7 @@
 
 - name: Locate the volume group resource "g-{{ ha_storage.volume_group }}"
   shell: >
+    set -o pipefail ; \
     crm_resource --locate --resource "g-{{ ha_storage.volume_group }}" \
         | awk '{print $NF}' | sort -u
   register: crm_resource_locate_group
@@ -19,7 +20,7 @@
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
   block:
     - name: Wait for the volume to be available on the node
-      shell: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
+      command: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
       register: fdisk_volumes
       until: fdisk_volumes.stderr_lines | length == 0
       retries: 60
@@ -39,13 +40,17 @@
   filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
 
 - name: Check group configuration "g-{{ ha_storage.volume_group }}"
-  shell: pcs resource show g-{{ ha_storage.volume_group }} | fgrep Resource
+  shell:
+    set -o pipefail ; \
+    pcs resource show g-{{ ha_storage.volume_group }} \
+    | fgrep Resource
   register: pcs_group_conf
 
 - name: Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}"
   when:
     - pcs_group_conf.stdout.find(item.lv) < 0
   shell: >
+    set -o pipefail ; \
     pcs resource create "{{ ha_storage.volume_group }}-{{ item.lv }}" ocf:heartbeat:Filesystem \
         directory="{{ item.mountpoint }}" \
         device="/dev/{{ ha_storage.volume_group }}/{{ item.lv }}" \

@@ -1,45 +1,46 @@
 ---
 
-- name: Check variables for cinder-based volumes
+- name:  | Check variables for cinder-based volumes
   block:
-    - name: Check sfex
+    - name:  | Check sfex
       fail: msg="Cannot use sfex with mirors"
       when:
-        - ha_storage_use_sfex == true
+        - ha_storage_use_sfex | lower == 'true'
         - ha_storage.cinder_volumes | length > 1
 
-    - name: Check cloud info
+    - name:  | Check cloud info
       fail: msg="No cloud info resource given"
       when:
         -  ha_storage_openstack_cloud_info_resource == None or ha_storage_openstack_cloud_info_resource | length == 0
 
-    - name: Check volume ids
+    - name:  | Check volume ids
       fail: msg="The volume ids are not given"
       when:
         - ha_storage.cinder_volumes | length == 0
 
-    - name: Do the given ids contain 37 characters?
+    - name:  | Do the given ids contain 37 characters?
       delegate_to: localhost
       become: no
       run_once: true
-      shell: echo {{ item }} | wc -c | grep 37
+      shell: set -o pipefail ; echo {{ item }} | wc -c | grep 37
       with_items: "{{ ha_storage.cinder_volumes }}"
 
   when:
     - ha_storage.cinder_volumes is defined
 
-- name: Check variables for physical-based volumes
+- name:  | Check variables for physical-based volumes
   block:
-    - name: Check sfex
+    - name:  | Check sfex
       fail: msg="Cannot use sfex with mirors"
       when:
-        - ha_storage_use_sfex == true
+        - ha_storage_use_sfex | lower == 'true'
         - ha_storage.luns | length > 1
   when:
     - ha_storage.luns is defined
 
-- name: Check filesystems to detect duplicates
+- name:  | Check filesystems to detect duplicates
   shell: >
+      set -o pipefail ; \
       echo {{ ha_storage|json_query("filesystems[*].lv")|join(" ") }} \
       | tr " " "\n" \
       | sort \
@@ -50,38 +51,40 @@
   become: no
   run_once: true
 
-- name: Check duplicates
+- name:  | Check duplicates
   fail: msg="Found duplicated datasets in ha_storage.filesystems"
   when: check_duplicated_lv.stdout_lines | length > 0
 
-- name: Check filesystems to detect duplicates
+- name:  | Check filesystems to detect duplicates
   shell: >
-      echo {{ ha_storage|json_query("filesystems[*].mountpoint")|join(" ") }} \
-      | tr " " "\n" \
-      | sort \
-      | uniq -c \
-      | awk '{if ($1 != "1") print $1}'
+    set -o pipefail ; \
+    echo {{ ha_storage|json_query("filesystems[*].mountpoint")|join(" ") }} \
+    | tr " " "\n" \
+    | sort \
+    | uniq -c \
+    | awk '{if ($1 != "1") print $1}'
   register: check_duplicated_mountpoints
   delegate_to: localhost
   become: no
   run_once: true
 
-- name: Check for duplicates
+- name:  | Check for duplicates
   fail: msg="Found duplicated mountpoints in ha_storage.filesystems"
   when: check_duplicated_mountpoints.stdout_lines | length > 0
 
 # We need to know how to manage the VG.
 # If pacemaker is running, the resources are created.
-- name: Check cluster health
+- name:  | Check cluster health
   shell: crm_mon -s || exit 0
   register: crm_mon
 
-- name: Check if the cluster is healthy
+- name:  | Check if the cluster is healthy
   fail: msg="The cluster must be healthy"
   when: crm_mon.stdout.find("CLUSTER OK") < 0
 
-- name: Get the number of nodes with the right attribute and value
+- name:  | Get the number of nodes with the right attribute and value
   shell: >
+    set -o pipefail ; \
     crm_mon -A1 \
       | grep {{ ha_storage_cluster_attribute_name }} \
       | grep -c {{ ha_storage_cluster_attribute_value }}
@@ -89,15 +92,16 @@
   run_once: true
 
 # Discover luns
-- name: Refresh if some luns are missing
+- name:  | Refresh if some luns are missing
   shell: >
-      test -e {{ item.id }} || \
-      for h in /sys/class/scsi_host/* ; do echo "- - -" > $h/scan ; done
+    set -o pipefail ; \
+    test -e {{ item.id }} || \
+    for h in /sys/class/scsi_host/* ; do echo "- - -" > $h/scan ; done
   with_items: "{{ ha_storage.luns }}"
   when: ha_storage.cinder_volumes is not defined
 
 # Disable lvmetad
-- name: Disable and stop lvmetad
+- name:  | Disable and stop lvmetad
   service: name={{ item }} state=stopped enabled=no
   with_items:
    - lvm2-lvmetad.socket
@@ -107,43 +111,43 @@
    - ha_storage.cinder_volumes is not defined
 
 # Deploy lock manager and cluster lvm
-- name: Enable cluster lvm
+- name:  | Enable cluster lvm
   command: lvmconf --enable-cluster
   when:
     - ha_storage_fs != "zfs"
-    - ha_storage_use_clvm == true
+    - ha_storage_use_clvm | lower == 'true'
 
 # Skip existing local VG to be managed by clvm
 # TODO: edit lvm.conf and volumes_list
 
-- name: Set LVM facts
+- name:  | Set LVM facts
   set_fact:
     lvm_mirors: "{{ ha_storage.cinder_volumes | length - 1 }}"
   when:
     - ha_storage.cinder_volumes is defined
     - ha_storage_fs != "zfs"
 
-- name: Set LVM facts
+- name:  | Set LVM facts
   set_fact:
     lvm_mirors: "{{ ha_storage.luns | length - 1 }}"
   when:
     - ha_storage.luns is defined
     - ha_storage_fs != "zfs"
 
-- name: Set LVM facts
+- name:  | Set LVM facts
   set_fact:
     vg_options: "-cy"
   when:
     - ha_storage_fs != "zfs"
-    - ha_storage_use_clvm == true
+    - ha_storage_use_clvm | lower == 'true'
 
-- name: Set LVM facts
+- name:  | Set LVM facts
   set_fact:
     vg_options: "-cn"
   when:
     - ha_storage_fs != "zfs"
-    - ha_storage_use_clvm == false
+    - ha_storage_use_clvm | lower == 'false'
 
-- name: Set default facts
+- name:  | Set default facts
   set_fact:
     create_datasets: false
