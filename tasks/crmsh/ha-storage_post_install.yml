@@ -58,13 +58,14 @@
       become: false
 
     - name: Wait for the Cinder resource to be running
-      shell: >
-          crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder \
-              || exit 0
       register: cinder_location
       until: cinder_location.stdout.find('is running on') > -1
       retries: 6
       delay: 10
+      run_once: true
+      shell: >
+        crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder \
+            || exit 0
 
 #
 # 1. a. pvcreate
@@ -108,10 +109,10 @@
     - ha_storage.cinder_volumes is defined
     - ha_storage.openrc is defined
   block:
-    - name: Locate the cinder volume
-      shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
-      register: crm_resource_locate_cinder
-      run_once: true
+#    - name: Locate the cinder volume
+#      shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
+#      register: crm_resource_locate_cinder
+#      run_once: true
 
     - name: Check if LVM physical volume already exists
       when: ha_storage_fs | lower != 'zfs'
@@ -135,13 +136,13 @@
       shell: ls {{ virtio_id_devices | regex_replace(',', ' ') }} || exit 0
 
     - when: ls_cinder_result.stderr_lines | length == 0
-      name: Set local fact
+      name: Set local fact (create_datasets = true)
       set_fact:
         create_datasets: true
 
     - when:
         - create_datasets == true
-        - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
+#        - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
       block:
         - name: VG create
           when:
