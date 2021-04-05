@@ -1,7 +1,5 @@
----
-
 ha_storage_sfex_packages: []
 ha_storage_sfex_resource_agent_url: https://raw.githubusercontent.com/ClusterLabs/resource-agents/v4.1.0rc1/heartbeat/sfex
 
 ha_storage_xfs_packages:
-  - xfsprogs
+- xfsprogs

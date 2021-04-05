@@ -1,8 +1,6 @@
----
-
 - name: Post-Install | pcs | Get resources list
   command: pcs config
-  changed_when: False
+  changed_when: false
   register: pcs_config
   run_once: true
 
@@ -10,9 +8,9 @@
 - name: Post-Install | pcs | Set clvm and dlm resources
   run_once: true
   when:
-    - ha_storage_fs | lower != 'zfs'
-    - ha_storage_use_clvm | lower == 'true'
-    - pcs_config.stdout.find('g-clvm') < 0
+  - ha_storage_fs | lower != 'zfs'
+  - ha_storage_use_clvm | lower == 'true'
+  - pcs_config.stdout.find('g-clvm') < 0
   shell: >
     pcs resource create dlm controld \
         op monitor interval="60s" timeout="60s" \
@@ -43,9 +41,9 @@
 - name: Post-Install | pcs | Openstack Cinder resources
   run_once: true
   when:
-    - ha_storage.cinder_volumes is defined
-    - ha_storage.openrc is defined
-    - pcs_config.stdout.find('g-' + ha_storage.volume_group) < 0
+  - ha_storage.cinder_volumes is defined
+  - ha_storage.openrc is defined
+  - pcs_config.stdout.find('g-' + ha_storage.volume_group) < 0
   block:
   - name: Post-Install | pcs | Openstack Cinder resources (multi-volumes)
     shell: >
@@ -77,7 +75,7 @@
     become: false
 
 - name: Post-Install | pcs | Wait for the Cinder resource to be running
-  changed_when: False
+  changed_when: false
   register: cinder_location
   until: cinder_location.stdout.find('is running on') > -1
   retries: 6
@@ -95,121 +93,120 @@
 
 - name: Post-Install | pcs | Physical volume group building
   when:
-    - not ha_storage.cinder_volumes is defined
-    - not ha_storage.openrc is defined
+  - not ha_storage.cinder_volumes is defined
+  - not ha_storage.openrc is defined
   block:
-    - name: Post-Install | pcs | Check luns availability
-      command: fdisk -l {{ ha_storage|json_query("luns[*].id")|join(" ") }}
-      changed_when: False
-      failed_when: False
-      register: fdisk_luns_result
+  - name: Post-Install | pcs | Check luns availability
+    command: fdisk -l {{ ha_storage|json_query("luns[*].id")|join(" ") }}
+    changed_when: false
+    failed_when: false
+    register: fdisk_luns_result
 
-    - when: fdisk_luns_result.stderr_lines | length == 0
-      name: Post-Install | pcs | Set local facts
-      set_fact:
-        create_datasets: true
+  - when: fdisk_luns_result.stderr_lines | length == 0
+    name: Post-Install | pcs | Set local facts
+    set_fact:
+      create_datasets: true
 
-    - when:
-        - fdisk_luns_result.stderr_lines | length == 0
+  - when:
+    - fdisk_luns_result.stderr_lines | length == 0
+    block:
+    - name: Post-Install | pcs | VG create
+      when:
+      - ha_storage_fs | lower != 'zfs'
+      lvg:
+        vg: '{{ ha_storage.volume_group }}'
+        pvs: "{{ ha_storage|json_query('luns[*].id')|join(',') }}"
+        vg_options: '{{ vg_options }}'
+
+    - name: Post-Install | pcs | zpool create
+      when:
+      - ha_storage_fs | lower == 'zfs'
       block:
-        - name: Post-Install | pcs | VG create
-          when:
-            - ha_storage_fs | lower != 'zfs'
-          lvg:
-            vg: "{{ ha_storage.volume_group }}"
-            pvs: "{{ ha_storage|json_query('luns[*].id')|join(',') }}"
-            vg_options: "{{ vg_options }}"
+      - name: Post-Install | pcs | Check zpool
+        command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
+        changed_when: false
+        failed_when: false
+        register: crm_locate_result
 
-        - name: Post-Install | pcs | zpool create
-          when:
-            - ha_storage_fs | lower == 'zfs'
-         block:
-         - name: Post-Install | pcs | Check zpool
-           command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
-           changed_when: False
-           failed_when: False
-           register: crm_locate_result
-
-         - name: Post-Install | pcs | Create zpool
-           when: crm_locate_result.rc != 0
-           command: >
-             zpool create -R {{ ha_storage_zpool_mountpoint }} \
-               {{ ha_storage.volume_group }} \
-               raidz1 \
-               {{ ha_storage|json_query("luns[*].id")|join(" ") }}
-    
+      - name: Post-Install | pcs | Create zpool
+        when: crm_locate_result.rc != 0
+        command: >
+          zpool create -R {{ ha_storage_zpool_mountpoint }} \
+            {{ ha_storage.volume_group }} \
+            raidz1 \
+            {{ ha_storage|json_query("luns[*].id")|join(" ") }}
 
 - name: Post-Install | pcs | Cinder volume group building
   when:
-    - ha_storage.cinder_volumes is defined
-    - ha_storage.openrc is defined
+  - ha_storage.cinder_volumes is defined
+  - ha_storage.openrc is defined
   block:
-    - name: Post-Install | pcs | Locate the cinder volume
-      shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
-      changed_when: False
-      failed_when: False
-      register: crm_resource_locate_cinder
-      run_once: true
+  - name: Post-Install | pcs | Locate the cinder volume
+    shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
+    changed_when: false
+    failed_when: false
+    register: crm_resource_locate_cinder
+    run_once: true
 
-    - name: Post-Install | pcs | Check if LVM physical volume already exists
-      command: pvs
-      changed_when: False
-      register: pvs_result
-      when:
-        - ha_storage_fs | lower != 'zfs'
+  - name: Post-Install | pcs | Check if LVM physical volume already exists
+    command: pvs
+    changed_when: false
+    register: pvs_result
+    when:
+    - ha_storage_fs | lower != 'zfs'
 
     # The device id is generated using the last 20 characters of the cinder id
     # We build a comma-separated list of devices
-    - name: Post-Install | pcs | We build a comma-separated list of devices
-      set_fact:
-        temp_virtio_id_devices: "{% for id in ha_storage.cinder_volumes %}/dev/disk/by-id/virtio-{{ id[:20] }},{% endfor %}"
+  - name: Post-Install | pcs | We build a comma-separated list of devices
+    set_fact:
+      temp_virtio_id_devices: '{% for id in ha_storage.cinder_volumes %}/dev/disk/by-id/virtio-{{ id[:20] }},{% endfor %}'
 
     # We clean the last comma of the list
-    - name: Post-Install | pcs | We clean the last comma of the list
-      set_fact:
-        virtio_id_devices: "{{ temp_virtio_id_devices[:-1] }}"
+  - name: Post-Install | pcs | We clean the last comma of the list
+    set_fact:
+      virtio_id_devices: '{{ temp_virtio_id_devices[:-1] }}'
 
-    - name: Post-Install | pcs | Check volumes availability
-      command: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
-      changed_when: False
-      failed_when: False
-      register: fdisk_cinder_result
+  - name: Post-Install | pcs | Check volumes availability
+    command: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
+    changed_when: false
+    failed_when: false
+    register: fdisk_cinder_result
 
-    - when: fdisk_cinder_result.stderr_lines | length == 0
-      name: Post-Install | pcs | Set local facts
-      set_fact:
-        create_datasets: true
+  - when: fdisk_cinder_result.stderr_lines | length == 0
+    name: Post-Install | pcs | Set local facts
+    set_fact:
+      create_datasets: true
 
-    - when:
-        - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
-        - create_datasets | lower == 'true'
+  - when:
+    - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
+    - create_datasets | lower == 'true'
+    block:
+    - name: Post-Install | pcs | VG create
+      when:
+      - ha_storage_fs | lower != 'zfs'
+      - pvs_result.stdout.find(ha_storage.volume_group) < 0
+      lvg:
+        vg: '{{ ha_storage.volume_group }}'
+        pvs: '{{ virtio_id_devices }}'
+        vg_options: '{{ vg_options }}'
+
+    - name: Post-Install | pcs | zpool create
+      when:
+      - ha_storage_fs | lower == 'zfs'
       block:
-        - name: Post-Install | pcs | VG create
-          when:
-            - ha_storage_fs | lower != 'zfs'
-            - pvs_result.stdout.find(ha_storage.volume_group) < 0
-          lvg:
-            vg: "{{ ha_storage.volume_group }}"
-            pvs: "{{ virtio_id_devices }}"
-            vg_options: "{{ vg_options }}"
+      - name: Post-Install | pcs | Check zpool
+        command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
+        changed_when: false
+        failed_when: false
+        register: crm_locate_result
 
-        - name: Post-Install | pcs | zpool create
-          when:
-            - ha_storage_fs | lower == 'zfs'
-          block:
-          - name: Post-Install | pcs | Check zpool
-            command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
-            changed_when: False
-            failed_when: False
-            register: crm_locate_result
-
-          - name: Post-Install | pcs | Create zpool
-            when: crm_locate_result.rc != 0
-            command: >
-              zpool create -R {{ ha_storage_zpool_mountpoint }} \
-                {{ ha_storage.volume_group }} \
-                raidz1 \
-                {{ ha_storage|json_query("luns[*].id")|join(" ") }}
+      - name: Post-Install | pcs | Create zpool
+        when: crm_locate_result.rc != 0
+        command: >
+          zpool create -R {{ ha_storage_zpool_mountpoint }} \
+            {{ ha_storage.volume_group }} \
+            raidz1 \
+            {{ ha_storage|json_query("luns[*].id")|join(" ") }}
 
 #
 # 2. a. resource group
@@ -217,54 +214,22 @@
 - name: Post-Install | pcs | Create resource group (LVM)
   run_once: true
   when:
-    - ha_storage_fs | lower != 'zfs'
-    - pcs_config.stdout.find(ha_storage.volume_group + '-vg') < 0
+  - ha_storage_fs | lower != 'zfs'
+  - pcs_config.stdout.find(ha_storage.volume_group + '-vg') < 0
   block:
-    - name: Post-Install | pcs | Create resource {{ ha_storage.volume_group }}-vg
-      command: >
-        pcs resource create {{ ha_storage.volume_group }}-vg LVM \
-            volgrpname={{ ha_storage.volume_group }} \
-            op monitor timeout=30 interval=10 \
-            --group g-{{ ha_storage.volume_group }} \
-            --disabled
+  - name: Post-Install | pcs | Create resource {{ ha_storage.volume_group }}-vg
+    command: >
+      pcs resource create {{ ha_storage.volume_group }}-vg LVM \
+          volgrpname={{ ha_storage.volume_group }} \
+          op monitor timeout=30 interval=10 \
+          --group g-{{ ha_storage.volume_group }} \
+          --disabled
 
-    - when:
-        - not ha_storage.cinder_volumes is defined
-      block:
-        - name: Post-Install | pcs | Add constraint ({{ ha_storage_cluster_attribute_name }} == {{ ha_storage_cluster_attribute_value }})
-          when:
-          command: >
-            pcs constraint location g-{{ ha_storage.volume_group }} \
-                rule \
-                    "{{ ha_storage_cluster_attribute_name }}" \
-                    eq \
-                    "{{ ha_storage_cluster_attribute_value }}"
-
-        - name: Post-Install | pcs | Add constraint (openstack_id is defined)
-          command: >
-            pcs constraint location g-{{ ha_storage.volume_group }} \
-                rule \
-                    defined openstack_id
-
-- name: Post-Install | pcs | Create resource group (ZFS)
-  run_once: true
-  when:
-    - ha_storage_fs | lower == 'zfs'
-    - pcs_config.stdout.find(ha_storage.volume_group + '_z') < 0
-  block:
-    - name: Post-Install | pcs | Create resource {{ ha_storage.volume_group }}_z
-      command: >
-        pcs resource create {{ ha_storage.volume_group }}_z ZFS \
-            pool={{ ha_storage.volume_group }} \
-            op monitor timeout="30s" interval="10s" \
-            op start timeout="30s" interval="0" \
-            op stop timeout="30s" interval="0" \
-            --disabled \
-            --group g-{{ ha_storage.volume_group }}
-
-    - name: Post-Install | pcs | Add constraint
+  - when:
+    - not ha_storage.cinder_volumes is defined
+    block:
+    - name: Post-Install | pcs | Add constraint ({{ ha_storage_cluster_attribute_name }} == {{ ha_storage_cluster_attribute_value }})
       when:
-        - not ha_storage.cinder_volumes is defined
       command: >
         pcs constraint location g-{{ ha_storage.volume_group }} \
             rule \
@@ -272,13 +237,45 @@
                 eq \
                 "{{ ha_storage_cluster_attribute_value }}"
 
-    - name: Post-Install | pcs | Enable {{ ha_storage.volume_group }}_z
+    - name: Post-Install | pcs | Add constraint (openstack_id is defined)
       command: >
-        pcs resource enable {{ ha_storage.volume_group }}_z
+        pcs constraint location g-{{ ha_storage.volume_group }} \
+            rule \
+                defined openstack_id
+
+- name: Post-Install | pcs | Create resource group (ZFS)
+  run_once: true
+  when:
+  - ha_storage_fs | lower == 'zfs'
+  - pcs_config.stdout.find(ha_storage.volume_group + '_z') < 0
+  block:
+  - name: Post-Install | pcs | Create resource {{ ha_storage.volume_group }}_z
+    command: >
+      pcs resource create {{ ha_storage.volume_group }}_z ZFS \
+          pool={{ ha_storage.volume_group }} \
+          op monitor timeout="30s" interval="10s" \
+          op start timeout="30s" interval="0" \
+          op stop timeout="30s" interval="0" \
+          --disabled \
+          --group g-{{ ha_storage.volume_group }}
+
+  - name: Post-Install | pcs | Add constraint
+    when:
+    - not ha_storage.cinder_volumes is defined
+    command: >
+      pcs constraint location g-{{ ha_storage.volume_group }} \
+          rule \
+              "{{ ha_storage_cluster_attribute_name }}" \
+              eq \
+              "{{ ha_storage_cluster_attribute_value }}"
+
+  - name: Post-Install | pcs | Enable {{ ha_storage.volume_group }}_z
+    command: >
+      pcs resource enable {{ ha_storage.volume_group }}_z
 
 - name: Post-Install | pcs | Locate the resource group
   command: crm_resource --resource g-{{ ha_storage.volume_group }} --locate
-  changed_when: False
+  changed_when: false
   register: crm_resource_locate_group
   until: crm_resource_locate_group.stdout.find("NOT running") < 0
   retries: 5
@@ -290,61 +287,61 @@
 #
 - name: Post-Install | pcs | sfex configuration
   when:
-    - ha_storage_use_sfex | lower == 'true'
-    - ha_storage.cinder_volumes | length == 1
-    - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
-    - pcs_config.stdout.find(ha_storage.volume_group + "sfex") < 0
-    - ansible_os_family | lower != 'redhat'
+  - ha_storage_use_sfex | lower == 'true'
+  - ha_storage.cinder_volumes | length == 1
+  - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+  - pcs_config.stdout.find(ha_storage.volume_group + "sfex") < 0
+  - ansible_os_family | lower != 'redhat'
   block:
-    - name: Post-Install | pcs | Enable sfex daemon
-      when: pcs_config.stdout.find('sfex-clone') < 0
-      shell: >
-        pcs resource create sfex sfex \
-            op monitor timeout="30s" interval="10s" \
-            op start timeout="30s" interval="0" \
-            op stop timeout="30s" interval="0" \
-            --disabled \
-            --clone && \
-        pcs constraint location rule \
-            "{{ ha_storage_cluster_attribute_name }}" eq "{{ ha_storage_cluster_attribute_value }}" && \
-        pcs resource enable sfex
+  - name: Post-Install | pcs | Enable sfex daemon
+    when: pcs_config.stdout.find('sfex-clone') < 0
+    shell: >
+      pcs resource create sfex sfex \
+          op monitor timeout="30s" interval="10s" \
+          op start timeout="30s" interval="0" \
+          op stop timeout="30s" interval="0" \
+          --disabled \
+          --clone && \
+      pcs constraint location rule \
+          "{{ ha_storage_cluster_attribute_name }}" eq "{{ ha_storage_cluster_attribute_value }}" && \
+      pcs resource enable sfex
 
-    - name: Post-Install | pcs | Create sfex volume
-      when:
-        - ha_storage_fs | lower != 'zfs'
-      lvol: vg={{ ha_storage.volume_group }} lv=sfex size=10M
+  - name: Post-Install | pcs | Create sfex volume
+    when:
+    - ha_storage_fs | lower != 'zfs'
+    lvol: vg={{ ha_storage.volume_group }} lv=sfex size=10M
 
-    - name: Post-Install | pcs | Create sfex volume
-      when:
-        - ha_storage_fs | lower == 'zfs'
-      shell: >
-        zfs list | grep -q {{ ha_storage.volume_group }}/sfex || \
-        zfs create "{{ ha_storage.volume_group }}/sfex" -o mountpoint=none
+  - name: Post-Install | pcs | Create sfex volume
+    when:
+    - ha_storage_fs | lower == 'zfs'
+    shell: >
+      zfs list | grep -q {{ ha_storage.volume_group }}/sfex || \
+      zfs create "{{ ha_storage.volume_group }}/sfex" -o mountpoint=none
 
-    - name: Post-Install | pcs | Wait for the sfex resource to be running
-      changed_when: False
-      register: cinder_location
-      until: cinder_location.stdout.find('is running on') > -1
-      retries: 6
-      delay: 10
-      shell: >
-        crm_resource --locate --resource sfex-clone \
-            || exit 0
+  - name: Post-Install | pcs | Wait for the sfex resource to be running
+    changed_when: false
+    register: cinder_location
+    until: cinder_location.stdout.find('is running on') > -1
+    retries: 6
+    delay: 10
+    shell: >
+      crm_resource --locate --resource sfex-clone \
+          || exit 0
 
-    - name: Post-Install | pcs | Configure sfex partition
-      command: sfex_init /dev/{{ ha_storage.volume_group }}/sfex
+  - name: Post-Install | pcs | Configure sfex partition
+    command: sfex_init /dev/{{ ha_storage.volume_group }}/sfex
 
-    - name: Post-Install | pcs | Add sfex resource
-      command: >
-        pcs resource create {{ ha_storage.volume_group }}-sfex \
-            device="/dev/{{ ha_storage.volume_group }}/sfex" \
-            collision_timeout=1 \
-            monitor_interval=1 \
-            op monitor timeout="30s" interval="10s" \
-            op start timeout="30s" interval="0" \
-            op stop timeout="30s" interval="0" \
-            --group g-{{ ha_storage.volume_group }} \
-            --after {{ ha_storage.volume_group }}-cinder
+  - name: Post-Install | pcs | Add sfex resource
+    command: >
+      pcs resource create {{ ha_storage.volume_group }}-sfex \
+          device="/dev/{{ ha_storage.volume_group }}/sfex" \
+          collision_timeout=1 \
+          monitor_interval=1 \
+          op monitor timeout="30s" interval="10s" \
+          op start timeout="30s" interval="0" \
+          op stop timeout="30s" interval="0" \
+          --group g-{{ ha_storage.volume_group }} \
+          --after {{ ha_storage.volume_group }}-cinder
 
 # 3. a. lvcreate
 #    b. add resource to group
@@ -356,49 +353,49 @@
 
 - name: Post-Install | pcs | Create the datasets
   when:
-    - ha_storage.filesystems is defined
-    - ha_storage.filesystems | length > 0
+  - ha_storage.filesystems is defined
+  - ha_storage.filesystems | length > 0
   block:
-    - when:
-        - ha_storage_fs | lower != 'zfs'
-      block:
-        - include_tasks: ../ha-storage_post_install_postmounts.yml
-
-        - when:
-            - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
-          include_tasks: ha-storage_post_install_lvm_volume.yml
-          with_items: "{{ ha_storage.filesystems }}"
+  - when:
+    - ha_storage_fs | lower != 'zfs'
+    block:
+    - include_tasks: ../ha-storage_post_install_postmounts.yml
 
     - when:
-        - ha_storage_fs | lower == 'zfs'
-        - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
-      include_tasks: ../ha-storage_post_install_zfs_dataset.yml
-      with_items: "{{ ha_storage.filesystems }}"
+      - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+      include_tasks: ha-storage_post_install_lvm_volume.yml
+      with_items: '{{ ha_storage.filesystems }}'
+
+  - when:
+    - ha_storage_fs | lower == 'zfs'
+    - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
+    include_tasks: ../ha-storage_post_install_zfs_dataset.yml
+    with_items: '{{ ha_storage.filesystems }}'
 
 # Services
 - name: Post-Install | pcs | Add the appending resources
   run_once: true
   when:
-    - ha_storage.append_resources is defined
-    - ha_storage.append_resources | length > 0
+  - ha_storage.append_resources is defined
+  - ha_storage.append_resources | length > 0
   block:
-    - name: Post-Install | pcs | Get group configuration
-      command: pcs resource show g-{{ ha_storage.volume_group }}
-      changed_when: False
-      register: pcs_resource_show
+  - name: Post-Install | pcs | Get group configuration
+    command: pcs resource show g-{{ ha_storage.volume_group }}
+    changed_when: false
+    register: pcs_resource_show
 
-    - name: Post-Install | pcs | Create the resource to append
-      when: pcs_resource_show.stdout.find(item.name + " (") < 0
-      with_items: "{{ ha_storage.append_resources }}"
-      command: >
-        pcs resource create {{ item.name }} {{ item.type }} \
-            {% for param in item.params %}
-                {{ param }} \
-            {% endfor %}
-            {% for op in item.op %}
-                op {{ op }} \
-            {% endfor %}
-            --group g-{{ ha_storage.volume_group }}
+  - name: Post-Install | pcs | Create the resource to append
+    when: pcs_resource_show.stdout.find(item.name + " (") < 0
+    with_items: '{{ ha_storage.append_resources }}'
+    command: >
+      pcs resource create {{ item.name }} {{ item.type }} \
+          {% for param in item.params %}
+              {{ param }} \
+          {% endfor %}
+          {% for op in item.op %}
+              op {{ op }} \
+          {% endfor %}
+          --group g-{{ ha_storage.volume_group }}
 
 - name: Post-Install | pcs | Enable the VG resource
   run_once: true

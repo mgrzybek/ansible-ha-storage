@@ -1,16 +1,15 @@
----
 # tasks file for ansible-ha-storage
 
 - name: Gather variables for each operating system
-  include_vars: "{{ item }}"
+  include_vars: '{{ item }}'
   with_first_found:
-    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml"
-    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower }}.yml"
-    - "{{ ansible_os_family | lower }}-{{ ansible_distribution_major_version | lower }}.yml"
-    - "{{ ansible_distribution | lower }}.yml"
-    - "{{ ansible_os_family | lower }}.yml"
+  - '{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml'
+  - '{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower }}.yml'
+  - '{{ ansible_os_family | lower }}-{{ ansible_distribution_major_version | lower }}.yml'
+  - '{{ ansible_distribution | lower }}.yml'
+  - '{{ ansible_os_family | lower }}.yml'
   tags:
-    - always
+  - always
 
 - import_tasks: ha-storage_pre_install.yml
   tags: ha-storage-pre-install

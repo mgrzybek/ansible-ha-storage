@@ -1,11 +1,9 @@
----
-
 - name: Post-Install | postmounts | Create systemd services
-  with_items: "{{ ha_storage.filesystems }}"
+  with_items: '{{ ha_storage.filesystems }}'
   template: src=postmount.service.j2 dest=/etc/systemd/system/postmount-{{ ha_storage.volume_group }}-{{ item.lv }}.service
   when:
-    - item.owner is defined
-    - item.group is defined
+  - item.owner is defined
+  - item.group is defined
 
 - name: Post-Install | postmounts | Reload systemd
   systemd: daemon_reload=yes

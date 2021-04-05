@@ -1,4 +1,3 @@
----
 # defaults file for ansible-ha-storage
 
 ha_storage_fs: xfs # zfs, ext4
@@ -16,11 +15,11 @@ ha_storage_crm_scripts_root_path: /usr/share/crmsh/scripts
 ha_storage_crm_ra_root_path: /usr/lib/ocf/resource.d/heartbeat
 
 ha_storage_crm_lvm_scripts:
-  - cloned_clvm
-  - group_clustered_vg
+- cloned_clvm
+- group_clustered_vg
 
 ha_storage_crm_zfs_scripts:
-  - group_clustered_zfs
+- group_clustered_zfs
 
 ha_storage_use_zfs_ra_github: false
 

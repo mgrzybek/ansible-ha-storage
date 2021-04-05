@@ -1,3 +1,4 @@
+---
 # Copyright (C) 2016 Mathieu Grzybek
 #
 # License: GNU General Public License (GPL)
@@ -9,29 +10,29 @@
     The location of the group is based on the given hostname.
 
   parameters:
-   - name: id
-     shortdesc: Name.
-     longdesc: Name given to the group.
-     required: true
-     type: string
+  - name: id
+    shortdesc: Name.
+    longdesc: Name given to the group.
+    required: true
+    type: string
 
-   - name: host
-     shortdesc: Hostname.
-     longdesc: Hostname to set the location constraint.
-     required: true
-     type: string
+  - name: host
+    shortdesc: Hostname.
+    longdesc: Hostname to set the location constraint.
+    required: true
+    type: string
 
   actions:
-    - cib: |
-        primitive {{id}}-vg LVM
-         params volgrpname={{id}} exclusive=true partial_activation=true
-         op monitor timeout=30 interval=10
-         op start timeout=30 interval=0
-         op stop timeout=30 interval=0
+  - cib: |
+      primitive {{id}}-vg LVM
+       params volgrpname={{id}} exclusive=true partial_activation=true
+       op monitor timeout=30 interval=10
+       op start timeout=30 interval=0
+       op stop timeout=30 interval=0
 
-    - cib: |
-        group g-{{id}} {{id}}-vg
+  - cib: |
+      group g-{{id}} {{id}}-vg
 
-    - cib: |
-        location loc_g-{{id}} g-{{id}}
-         rule -inf: '#uname' ne "{{host}}"
+  - cib: |
+      location loc_g-{{id}} g-{{id}}
+       rule -inf: '#uname' ne "{{host}}"

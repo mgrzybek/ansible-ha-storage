@@ -1,9 +1,7 @@
----
-
 - name: Post-Install | zfs | Dataset create "{{ ha_storage.volume_group }}/{{ item.lv }}"
   when:
-    - item.lv is defined
-    - item.mountpoint is defined
+  - item.lv is defined
+  - item.mountpoint is defined
   shell: >
     set -o pipefail ; \
     zfs list | grep -q {{ ha_storage.volume_group }}/{{ item.lv }} || \

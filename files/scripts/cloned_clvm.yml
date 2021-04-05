@@ -1,3 +1,4 @@
+---
 # Copyright (C) 2016 Mathieu Grzybek
 #
 # License: GNU General Public License (GPL)
@@ -10,42 +11,42 @@
     Location is set by 'attribute_name' and 'attribute_value'.
 
   parameters:
-   - name: size
-     shortdesc: Number of cloned primitives.
-     longdesc: Number of cloned primitives.
-     required: true
-     type: integer
+  - name: size
+    shortdesc: Number of cloned primitives.
+    longdesc: Number of cloned primitives.
+    required: true
+    type: integer
 
-   - name: attribute_name
-     shortdesc: Attribute to check for placement.
-     longdesc: Attribute to check for placement.
-     required: true
-     type: string
+  - name: attribute_name
+    shortdesc: Attribute to check for placement.
+    longdesc: Attribute to check for placement.
+    required: true
+    type: string
 
-   - name: attribute_value
-     shortdesc: Value to test.
-     longdesc: Value to test.
-     required: true
-     type: string
+  - name: attribute_value
+    shortdesc: Value to test.
+    longdesc: Value to test.
+    required: true
+    type: string
 
   actions:
-   - cib: |
-       primitive dlm ocf:pacemaker:controld
-        op monitor interval="60" timeout="60"
+  - cib: |
+      primitive dlm ocf:pacemaker:controld
+       op monitor interval="60" timeout="60"
 
-   - cib: |
-       primitive clvm ocf:lvm2:clvmd
-        params daemon_timeout=30
-        op monitor interval=20s timeout=60s
-        op start interval=0 timeout=90s
-        op stop interval=0 timeout=100s
+  - cib: |
+      primitive clvm ocf:lvm2:clvmd
+       params daemon_timeout=30
+       op monitor interval=20s timeout=60s
+       op start interval=0 timeout=90s
+       op stop interval=0 timeout=100s
 
-   - cib: |
-       group g-clvm dlm clvm
+  - cib: |
+      group g-clvm dlm clvm
 
-   - cib: |
-       clone c-clvm g-clvm
-         meta interleave=true ordered=true clone-max={{size}}
+  - cib: |
+      clone c-clvm g-clvm
+        meta interleave=true ordered=true clone-max={{size}}
 
-   - cib: |
-       location loc_clvm c-clvm rule -inf: {{attribute_name}} ne {{attribute_value}}
+  - cib: |
+      location loc_clvm c-clvm rule -inf: {{attribute_name}} ne {{attribute_value}}

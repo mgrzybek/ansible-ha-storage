@@ -1,13 +1,11 @@
----
-
 ha_storage_clvm_packages:
-  - lvm2-clvm
-  - lvm2-cmirrord
-  - dlm-kmp-default
-  - libdlm
+- lvm2-clvm
+- lvm2-cmirrord
+- dlm-kmp-default
+- libdlm
 
 ha_storage_ocfs2_packages:
-  - ocfs2-kmp-default
-  - ocfs2-tools
-  - dlm-kmp-default
-  - libdlm
+- ocfs2-kmp-default
+- ocfs2-tools
+- dlm-kmp-default
+- libdlm

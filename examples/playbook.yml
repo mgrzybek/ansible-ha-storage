@@ -1,48 +1,47 @@
-
 # LVM-based deployment
 - hosts: all
   roles:
-    - { role: ansible-ha-storage }
+  - {role: ansible-ha-storage}
   vars:
     ha_storage_fs: xfs
     ha_storage:
       luns:
-        - id: 23234
-          alias: lun-dc-1
-        - id: 45345
-          alias: lun-dc-2
+      - id: 23234
+        alias: lun-dc-1
+      - id: 45345
+        alias: lun-dc-2
       volume_group: data
       filesystems:
         # /tmp size, in GB
-        - lv: tmp
-          size: 2GB
-          fstype: tmpfs
-          mountpoint: /srv/tmp
-        - lv: var
-          size: 2GB
-          fstype: xfs
-          mountpoint: /srv/var
-        - lv: usr
-          size: 2GB
-          mountpoint: /srv/usr
+      - lv: tmp
+        size: 2GB
+        fstype: tmpfs
+        mountpoint: /srv/tmp
+      - lv: var
+        size: 2GB
+        fstype: xfs
+        mountpoint: /srv/var
+      - lv: usr
+        size: 2GB
+        mountpoint: /srv/usr
 
 # ZFS-based deployment
 - hosts: all
   roles:
-    - { role: ansible-ha-storage }
+  - {role: ansible-ha-storage}
   vars:
     ha_storage_fs: zfs
     ha_storage:
       luns:
-        - id: 23234
-          alias: lun-dc-1
-        - id: 45345
-          alias: lun-dc-2
+      - id: 23234
+        alias: lun-dc-1
+      - id: 45345
+        alias: lun-dc-2
       volume_group: data
       filesystems:
-        - lv: data
-          size: 20GB
-          mountpoint: data
-        - lv: xlog
-          size: 20GB
-          mountpoint: xlog
+      - lv: data
+        size: 20GB
+        mountpoint: data
+      - lv: xlog
+        size: 20GB
+        mountpoint: xlog

@@ -1,8 +1,6 @@
----
-
 - name: Post-Install | crmsh | Get resources list
   command: crm configure show
-  changed_when: False
+  changed_when: false
   register: crm_config
   run_once: true
 
@@ -39,8 +37,8 @@
   block:
   - name: Post-Install | crmsh | Locate Openstack Cinder resources
     command: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder
-    changed_when: False
-    failed_when: False
+    changed_when: false
+    failed_when: false
     register: crm_locate_result
 
   - name: Post-Install | crmsh | Deploy Openstack Cinder resources
@@ -65,7 +63,7 @@
     become: false
 
   - name: Post-Install | crmsh | Wait for the Cinder resource to be running
-    changed_when: False
+    changed_when: false
     register: cinder_location
     until: cinder_location.stdout.find('is running on') > -1
     retries: 6
@@ -87,8 +85,8 @@
   block:
   - name: Post-Install | crmsh | Check luns availability
     command: fdisk -l {{ ha_storage|json_query("luns[*].id")|join(" ") }}
-    changed_when: False
-    failed_whon: False
+    changed_when: false
+    failed_whon: false
     register: fdisk_luns_result
 
   - when: fdisk_luns_result.stderr_lines | length == 0
@@ -110,8 +108,8 @@
       block:
       - name: Post-Install | crmsh | Check zpool
         command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
-        changed_when: False
-        failed_when: False
+        changed_when: false
+        failed_when: false
         register: crm_locate_result
 
       - name: Post-Install | crmsh | Create zpool
@@ -134,7 +132,7 @@
 
   - name: Post-Install | crmsh | Check if LVM physical volume already exists
     when: ha_storage_fs | lower != 'zfs'
-    changed_when: False
+    changed_when: false
     register: pvs_result
     command: pvs
 
@@ -151,8 +149,8 @@
 
     # TODO: use fdisk
   - name: Post-Install | crmsh | Check volumes availability
-    changed_when: False
-    failed_when: False
+    changed_when: false
+    failed_when: false
     register: ls_cinder_result
     command: ls {{ virtio_id_devices | regex_replace(',', ' ') }}
 
@@ -180,8 +178,8 @@
       block:
       - name: Post-Install | crmsh | Check zpool
         command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
-        changed_when: False
-        failed_when: False
+        changed_when: false
+        failed_when: false
         register: crm_locate_result
 
       - name: Post-Install | crmsh | Create zpool

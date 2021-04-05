@@ -1,51 +1,49 @@
----
-
 - name: Pre-Install | Check variables for cinder-based volumes
   block:
-    - name: Pre-Install | Check sfex
-      fail: msg="Cannot use sfex with mirors"
-      when:
-        - ha_storage_use_sfex | lower == 'true'
-        - ha_storage.cinder_volumes | length > 1
+  - name: Pre-Install | Check sfex
+    fail: msg="Cannot use sfex with mirors"
+    when:
+    - ha_storage_use_sfex | lower == 'true'
+    - ha_storage.cinder_volumes | length > 1
 
-    - name: Pre-Install | Check cloud info
-      fail: msg="No cloud info resource given"
-      when:
-        -  ha_storage_openstack_cloud_info_resource == None or ha_storage_openstack_cloud_info_resource | length == 0
+  - name: Pre-Install | Check cloud info
+    fail: msg="No cloud info resource given"
+    when:
+    - ha_storage_openstack_cloud_info_resource == None or ha_storage_openstack_cloud_info_resource | length == 0
 
-    - name: Pre-Install | Check volume ids
-      fail: msg="The volume ids are not given"
-      when:
-        - ha_storage.cinder_volumes | length == 0
+  - name: Pre-Install | Check volume ids
+    fail: msg="The volume ids are not given"
+    when:
+    - ha_storage.cinder_volumes | length == 0
 
-    - name: Pre-Install | Do the given ids contain 37 characters?
-      delegate_to: localhost
-      become: no
-      run_once: true
-      shell: set -o pipefail ; echo {{ item }} | wc -c | grep 37
-      with_items: "{{ ha_storage.cinder_volumes }}"
+  - name: Pre-Install | Do the given ids contain 37 characters?
+    delegate_to: localhost
+    become: no
+    run_once: true
+    shell: set -o pipefail ; echo {{ item }} | wc -c | grep 37
+    with_items: '{{ ha_storage.cinder_volumes }}'
 
   when:
-    - ha_storage.cinder_volumes is defined
+  - ha_storage.cinder_volumes is defined
 
 - name: Pre-Install | Check variables for physical-based volumes
   block:
-    - name: Pre-Install | Check sfex
-      fail: msg="Cannot use sfex with mirors"
-      when:
-        - ha_storage_use_sfex | lower == 'true'
-        - ha_storage.luns | length > 1
+  - name: Pre-Install | Check sfex
+    fail: msg="Cannot use sfex with mirors"
+    when:
+    - ha_storage_use_sfex | lower == 'true'
+    - ha_storage.luns | length > 1
   when:
-    - ha_storage.luns is defined
+  - ha_storage.luns is defined
 
 - name: Pre-Install | Check filesystems to detect duplicates
   shell: >
-      set -o pipefail ; \
-      echo {{ ha_storage|json_query("filesystems[*].lv")|join(" ") }} \
-      | tr " " "\n" \
-      | sort \
-      | uniq -c \
-      | awk '{if ($1 != "1") print $1}'
+    set -o pipefail ; \
+    echo {{ ha_storage|json_query("filesystems[*].lv")|join(" ") }} \
+    | tr " " "\n" \
+    | sort \
+    | uniq -c \
+    | awk '{if ($1 != "1") print $1}'
   register: check_duplicated_lv
   delegate_to: localhost
   become: no
@@ -64,7 +62,7 @@
     | uniq -c \
     | awk '{if ($1 != "1") print $1}'
   register: check_duplicated_mountpoints
-  changed_when: False
+  changed_when: false
   delegate_to: localhost
   become: no
   run_once: true
@@ -77,8 +75,8 @@
 # If pacemaker is running, the resources are created.
 - name: Pre-Install | Check cluster health
   command: crm_mon -s
-  changed_when: False
-  failed_wfen: False
+  changed_when: false
+  failed_wfen: false
   register: crm_mon
 
 - name: Pre-Install | Check if the cluster is healthy
@@ -91,7 +89,7 @@
     crm_mon -A1 \
       | grep {{ ha_storage_cluster_attribute_name }} \
       | grep -c {{ ha_storage_cluster_attribute_value }}
-  changed_when: False
+  changed_when: false
   register: ha_storage_cluster_nodes
   run_once: true
 
@@ -101,56 +99,56 @@
     set -o pipefail ; \
     test -e {{ item.id }} || \
     for h in /sys/class/scsi_host/* ; do echo "- - -" > $h/scan ; done
-  with_items: "{{ ha_storage.luns }}"
+  with_items: '{{ ha_storage.luns }}'
   when: ha_storage.cinder_volumes is not defined
 
 # Disable lvmetad
 - name: Pre-Install | Disable and stop lvmetad
   service: name={{ item }} state=stopped enabled=no
   with_items:
-   - lvm2-lvmetad.socket
-   - lvm2-lvmetad.service
+  - lvm2-lvmetad.socket
+  - lvm2-lvmetad.service
   when:
-   - ha_storage_fs != "zfs"
-   - ha_storage.cinder_volumes is not defined
+  - ha_storage_fs != "zfs"
+  - ha_storage.cinder_volumes is not defined
 
 # Deploy lock manager and cluster lvm
 - name: Pre-Install | Enable cluster lvm
   command: lvmconf --enable-cluster
   when:
-    - ha_storage_fs != "zfs"
-    - ha_storage_use_clvm | lower == 'true'
+  - ha_storage_fs != "zfs"
+  - ha_storage_use_clvm | lower == 'true'
 
 # Skip existing local VG to be managed by clvm
 # TODO: edit lvm.conf and volumes_list
 
 - name: Pre-Install | Set LVM facts
   set_fact:
-    lvm_mirors: "{{ ha_storage.cinder_volumes | length - 1 }}"
+    lvm_mirors: '{{ ha_storage.cinder_volumes | length - 1 }}'
   when:
-    - ha_storage.cinder_volumes is defined
-    - ha_storage_fs != "zfs"
+  - ha_storage.cinder_volumes is defined
+  - ha_storage_fs != "zfs"
 
 - name: Pre-Install | Set LVM facts
   set_fact:
-    lvm_mirors: "{{ ha_storage.luns | length - 1 }}"
+    lvm_mirors: '{{ ha_storage.luns | length - 1 }}'
   when:
-    - ha_storage.luns is defined
-    - ha_storage_fs != "zfs"
+  - ha_storage.luns is defined
+  - ha_storage_fs != "zfs"
 
 - name: Pre-Install | Set LVM facts
   set_fact:
-    vg_options: "-cy"
+    vg_options: -cy
   when:
-    - ha_storage_fs != "zfs"
-    - ha_storage_use_clvm | lower == 'true'
+  - ha_storage_fs != "zfs"
+  - ha_storage_use_clvm | lower == 'true'
 
 - name: Pre-Install | Set LVM facts
   set_fact:
-    vg_options: "-cn"
+    vg_options: -cn
   when:
-    - ha_storage_fs != "zfs"
-    - ha_storage_use_clvm | lower == 'false'
+  - ha_storage_fs != "zfs"
+  - ha_storage_use_clvm | lower == 'false'
 
 - name: Pre-Install | Set default facts
   set_fact:

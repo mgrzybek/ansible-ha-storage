@@ -1,3 +1,4 @@
+---
 # Copyright (C) 2016 Mathieu Grzybek
 #
 # License: GNU General Public License (GPL)
@@ -9,45 +10,45 @@
     The location of the group is based on the given attribute.
 
   parameters:
-   - name: id
-     shortdesc: Name.
-     longdesc: Name given to the group.
-     required: true
-     type: string
+  - name: id
+    shortdesc: Name.
+    longdesc: Name given to the group.
+    required: true
+    type: string
 
-   - name: cluster-attribute
-     shortdesc: Which attribute to check.
-     longdesc: Which attribute to check.
-     required: true
-     type: string
+  - name: cluster-attribute
+    shortdesc: Which attribute to check.
+    longdesc: Which attribute to check.
+    required: true
+    type: string
 
-   - name: attribute-value
-     shortdesc: Which value to expect.
-     longdesc: Which value to expect.
-     required: true
-     type: string
+  - name: attribute-value
+    shortdesc: Which value to expect.
+    longdesc: Which value to expect.
+    required: true
+    type: string
 
-   - name: exclusive
-     shortdesc: Exclusive mounting.
-     longdesc: Is this volume exclusive?
-     required: false
-     default: true
-     type: boolean
+  - name: exclusive
+    shortdesc: Exclusive mounting.
+    longdesc: Is this volume exclusive?
+    required: false
+    default: true
+    type: boolean
 
   actions:
-    - cib: |
-        primitive {{id}}-vg LVM
-         params volgrpname={{id}} exclusive={{exclusive}} partial_activation=true
-         op monitor timeout=30 interval=10
-         op start timeout=30 interval=0
-         op stop timeout=30 interval=0
+  - cib: |
+      primitive {{id}}-vg LVM
+       params volgrpname={{id}} exclusive={{exclusive}} partial_activation=true
+       op monitor timeout=30 interval=10
+       op start timeout=30 interval=0
+       op stop timeout=30 interval=0
 
-    - cib: |
-        group g-{{id}} {{id}}-vg
+  - cib: |
+      group g-{{id}} {{id}}-vg
 
-    - cib: |
-        location loc_{{id}} g-{{id}}
-         rule -inf: '{{cluster-attribute}}' ne "{{attribute-value}}"
+  - cib: |
+      location loc_{{id}} g-{{id}}
+       rule -inf: '{{cluster-attribute}}' ne "{{attribute-value}}"
 
-    - cib: |
-        order order_clvm_g-{{id}} Mandatory: c-clvm:start g-{{id}}:start
+  - cib: |
+      order order_clvm_g-{{id}} Mandatory: c-clvm:start g-{{id}}:start

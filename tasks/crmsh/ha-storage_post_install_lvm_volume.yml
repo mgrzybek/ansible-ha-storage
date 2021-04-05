@@ -1,10 +1,8 @@
----
-
 - when:
-    - item.fstype != "tmpfs"
+  - item.fstype != "tmpfs"
   block:
-    - name: Post-Install | lvm | LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
-      lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
+  - name: Post-Install | lvm | LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
+    lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
 
-    - name: Post-Install | lvm | LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
-      filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
+  - name: Post-Install | lvm | LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
+    filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
