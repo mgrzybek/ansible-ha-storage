@@ -1,24 +1,24 @@
 ---
 
-- name:  | Check variables for cinder-based volumes
+- name: Pre-Install | Check variables for cinder-based volumes
   block:
-    - name:  | Check sfex
+    - name: Pre-Install | Check sfex
       fail: msg="Cannot use sfex with mirors"
       when:
         - ha_storage_use_sfex | lower == 'true'
         - ha_storage.cinder_volumes | length > 1
 
-    - name:  | Check cloud info
+    - name: Pre-Install | Check cloud info
       fail: msg="No cloud info resource given"
       when:
         -  ha_storage_openstack_cloud_info_resource == None or ha_storage_openstack_cloud_info_resource | length == 0
 
-    - name:  | Check volume ids
+    - name: Pre-Install | Check volume ids
       fail: msg="The volume ids are not given"
       when:
         - ha_storage.cinder_volumes | length == 0
 
-    - name:  | Do the given ids contain 37 characters?
+    - name: Pre-Install | Do the given ids contain 37 characters?
       delegate_to: localhost
       become: no
       run_once: true
@@ -28,9 +28,9 @@
   when:
     - ha_storage.cinder_volumes is defined
 
-- name:  | Check variables for physical-based volumes
+- name: Pre-Install | Check variables for physical-based volumes
   block:
-    - name:  | Check sfex
+    - name: Pre-Install | Check sfex
       fail: msg="Cannot use sfex with mirors"
       when:
         - ha_storage_use_sfex | lower == 'true'
@@ -38,7 +38,7 @@
   when:
     - ha_storage.luns is defined
 
-- name:  | Check filesystems to detect duplicates
+- name: Pre-Install | Check filesystems to detect duplicates
   shell: >
       set -o pipefail ; \
       echo {{ ha_storage|json_query("filesystems[*].lv")|join(" ") }} \
@@ -51,11 +51,11 @@
   become: no
   run_once: true
 
-- name:  | Check duplicates
+- name: Pre-Install | Check duplicates
   fail: msg="Found duplicated datasets in ha_storage.filesystems"
   when: check_duplicated_lv.stdout_lines | length > 0
 
-- name:  | Check filesystems to detect duplicates
+- name: Pre-Install | Check filesystems to detect duplicates
   shell: >
     set -o pipefail ; \
     echo {{ ha_storage|json_query("filesystems[*].mountpoint")|join(" ") }} \
@@ -64,35 +64,39 @@
     | uniq -c \
     | awk '{if ($1 != "1") print $1}'
   register: check_duplicated_mountpoints
+  changed_when: False
   delegate_to: localhost
   become: no
   run_once: true
 
-- name:  | Check for duplicates
+- name: Pre-Install | Check for duplicates
   fail: msg="Found duplicated mountpoints in ha_storage.filesystems"
   when: check_duplicated_mountpoints.stdout_lines | length > 0
 
 # We need to know how to manage the VG.
 # If pacemaker is running, the resources are created.
-- name:  | Check cluster health
-  shell: crm_mon -s || exit 0
+- name: Pre-Install | Check cluster health
+  command: crm_mon -s
+  changed_when: False
+  failed_wfen: False
   register: crm_mon
 
-- name:  | Check if the cluster is healthy
+- name: Pre-Install | Check if the cluster is healthy
   fail: msg="The cluster must be healthy"
   when: crm_mon.stdout.find("CLUSTER OK") < 0
 
-- name:  | Get the number of nodes with the right attribute and value
+- name: Pre-Install | Get the number of nodes with the right attribute and value
   shell: >
     set -o pipefail ; \
     crm_mon -A1 \
       | grep {{ ha_storage_cluster_attribute_name }} \
       | grep -c {{ ha_storage_cluster_attribute_value }}
+  changed_when: False
   register: ha_storage_cluster_nodes
   run_once: true
 
 # Discover luns
-- name:  | Refresh if some luns are missing
+- name: Pre-Install | Refresh if some luns are missing
   shell: >
     set -o pipefail ; \
     test -e {{ item.id }} || \
@@ -101,7 +105,7 @@
   when: ha_storage.cinder_volumes is not defined
 
 # Disable lvmetad
-- name:  | Disable and stop lvmetad
+- name: Pre-Install | Disable and stop lvmetad
   service: name={{ item }} state=stopped enabled=no
   with_items:
    - lvm2-lvmetad.socket
@@ -111,7 +115,7 @@
    - ha_storage.cinder_volumes is not defined
 
 # Deploy lock manager and cluster lvm
-- name:  | Enable cluster lvm
+- name: Pre-Install | Enable cluster lvm
   command: lvmconf --enable-cluster
   when:
     - ha_storage_fs != "zfs"
@@ -120,34 +124,34 @@
 # Skip existing local VG to be managed by clvm
 # TODO: edit lvm.conf and volumes_list
 
-- name:  | Set LVM facts
+- name: Pre-Install | Set LVM facts
   set_fact:
     lvm_mirors: "{{ ha_storage.cinder_volumes | length - 1 }}"
   when:
     - ha_storage.cinder_volumes is defined
     - ha_storage_fs != "zfs"
 
-- name:  | Set LVM facts
+- name: Pre-Install | Set LVM facts
   set_fact:
     lvm_mirors: "{{ ha_storage.luns | length - 1 }}"
   when:
     - ha_storage.luns is defined
     - ha_storage_fs != "zfs"
 
-- name:  | Set LVM facts
+- name: Pre-Install | Set LVM facts
   set_fact:
     vg_options: "-cy"
   when:
     - ha_storage_fs != "zfs"
     - ha_storage_use_clvm | lower == 'true'
 
-- name:  | Set LVM facts
+- name: Pre-Install | Set LVM facts
   set_fact:
     vg_options: "-cn"
   when:
     - ha_storage_fs != "zfs"
     - ha_storage_use_clvm | lower == 'false'
 
-- name:  | Set default facts
+- name: Pre-Install | Set default facts
   set_fact:
     create_datasets: false

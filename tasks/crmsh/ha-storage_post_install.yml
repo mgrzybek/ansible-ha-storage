@@ -1,10 +1,13 @@
-- name: Get resources list
+---
+
+- name: Post-Install | crmsh | Get resources list
   command: crm configure show
+  changed_when: False
   register: crm_config
   run_once: true
 
 # Cluster stuff
-- name: Set clvm and dlm resources
+- name: Post-Install | crmsh | Set clvm and dlm resources
   run_once: true
   when:
   - ha_storage_fs | lower != 'zfs'
@@ -15,7 +18,7 @@
       attribute_name={{ ha_storage_cluster_attribute_name }} \
       attribute_value={{ ha_storage_cluster_attribute_value }}
 
-- name: Set ocfs2 resource
+- name: Post-Install | crmsh | Set ocfs2 resource
   command: crm script run cloned_o2cb
   run_once: true
   #when: '"ocfs2" in ha_storage.filesystems|json_query("fstype")'
@@ -27,16 +30,22 @@
 # Deploy storage
 
 # Openstack cinder devices
-- name: Openstack Cinder resources
+- name: Post-Install | crmsh | Openstack Cinder resources
   run_once: true
   when:
   - ha_storage.cinder_volumes is defined
   - ha_storage.openrc is defined
   - crm_config.stdout.find('g-' + ha_storage.volume_group) < 0
   block:
-  - name: Openstack Cinder resources
+  - name: Post-Install | crmsh | Locate Openstack Cinder resources
+    command: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder
+    changed_when: False
+    failed_when: False
+    register: crm_locate_result
+
+  - name: Post-Install | crmsh | Deploy Openstack Cinder resources
+    when: crm_locate_result.rc != 0
     shell: >
-      crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder || \
       {% if ha_storage.cinder_volumes | length > 1 %}
           crm configure primitive {{ ha_storage.volume_group }}-cinder ocf:heartbeat:openstack-cinder-volumes \
               params \
@@ -49,13 +58,14 @@
       {% endif %}
                   openrc={{ ha_storage.openrc }}
 
-  - name: Sleep for 60 seconds and continue with play
+  - name: Post-Install | crmsh | Sleep for 60 seconds and continue with play
     wait_for: timeout=60
     delegate_to: localhost
     run_once: true
     become: false
 
-  - name: Wait for the Cinder resource to be running
+  - name: Post-Install | crmsh | Wait for the Cinder resource to be running
+    changed_when: False
     register: cinder_location
     until: cinder_location.stdout.find('is running on') > -1
     retries: 6
@@ -70,13 +80,15 @@
 #    b. vgcreate
 #
 
-- name: Physical volume group building
+- name: Post-Install | crmsh | Physical volume group building
   when:
   - not ha_storage.cinder_volumes is defined
   - not ha_storage.openrc is defined
   block:
-  - name: Check luns availability
-    shell: fdisk -l {{ ha_storage|json_query("luns[*].id")|join(" ") }} || exit 0
+  - name: Post-Install | crmsh | Check luns availability
+    command: fdisk -l {{ ha_storage|json_query("luns[*].id")|join(" ") }}
+    changed_when: False
+    failed_whon: False
     register: fdisk_luns_result
 
   - when: fdisk_luns_result.stderr_lines | length == 0
@@ -84,7 +96,7 @@
     - set_fact:
         create_datasets: true
 
-    - name: VG create
+    - name: Post-Install | crmsh | VG create
       when:
       - ha_storage_fs | lower != 'zfs'
       lvg:
@@ -92,49 +104,60 @@
         pvs: '{{ ha_storage|json_query("luns[*].id")|join(",") }}'
         vg_options: '{{ vg_options }}'
 
-    - name: zpool create
+    - name: Post-Install | crmsh | zpool create
       when:
       - ha_storage_fs | lower == 'zfs'
-      shell: >
-        crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
-        zpool create -R {{ ha_storage_zpool_mountpoint }} \
+      block:
+      - name: Post-Install | crmsh | Check zpool
+        command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
+        changed_when: False
+        failed_when: False
+        register: crm_locate_result
+
+      - name: Post-Install | crmsh | Create zpool
+        when: crm_locate_result.rc != 0
+        command: >
+          zpool create -R {{ ha_storage_zpool_mountpoint }} \
             {{ ha_storage.volume_group }} \
             raidz1 \
             {{ ha_storage|json_query("luns[*].id")|join(" ") }}
 
-- name: Cinder volume group building
+- name: Post-Install | crmsh | Cinder volume group building
   when:
   - ha_storage.cinder_volumes is defined
   - ha_storage.openrc is defined
   block:
-#    - name: Locate the cinder volume
+#    - name: Post-Install | crmsh | Locate the cinder volume
 #      shell: crm_resource --locate --resource {{ ha_storage.volume_group }}-cinder | awk '{print $NF}'
 #      register: crm_resource_locate_cinder
 #      run_once: true
 
-  - name: Check if LVM physical volume already exists
+  - name: Post-Install | crmsh | Check if LVM physical volume already exists
     when: ha_storage_fs | lower != 'zfs'
+    changed_when: False
     register: pvs_result
     command: pvs
 
     # The device id is generated using the last 20 characters of the cinder id
     # We build a comma-separated list of devices
-  - name: We build a comma-separated list of devices
+  - name: Post-Install | crmsh | We build a comma-separated list of devices
     set_fact:
       temp_virtio_id_devices: '{% for id in ha_storage.cinder_volumes %}/dev/disk/by-id/virtio-{{ id[:20] }},{% endfor %}'
 
     # We clean the last comma of the list
-  - name: We clean the last comma of the list
+  - name: Post-Install | crmsh | We clean the last comma of the list
     set_fact:
       virtio_id_devices: '{{ temp_virtio_id_devices[:-1] }}'
 
     # TODO: use fdisk
-  - name: Check volumes availability
+  - name: Post-Install | crmsh | Check volumes availability
+    changed_when: False
+    failed_when: False
     register: ls_cinder_result
-    shell: ls {{ virtio_id_devices | regex_replace(',', ' ') }} || exit 0
+    command: ls {{ virtio_id_devices | regex_replace(',', ' ') }}
 
   - when: ls_cinder_result.stderr_lines | length == 0
-    name: Set local fact (create_datasets = true)
+    name: Post-Install | crmsh | Set local fact (create_datasets = true)
     set_fact:
       create_datasets: true
 
@@ -142,7 +165,7 @@
     - create_datasets == true
 #        - crm_resource_locate_cinder.stdout.find(ansible_hostname) > -1
     block:
-    - name: VG create
+    - name: Post-Install | crmsh | VG create
       when:
       - ha_storage_fs | lower != 'zfs'
       - pvs_result.stdout.find(ha_storage.volume_group) < 0
@@ -151,20 +174,27 @@
         pvs: '{{ virtio_id_devices }}'
         vg_options: '{{ vg_options }}'
 
-
-    - name: zpool create
+    - name: Post-Install | crmsh | zpool create
       when:
       - ha_storage_fs | lower == 'zfs'
-      shell: >
-        crm_resource --locate --resource {{ ha_storage.volume_group }}_z || \
-        zpool create -R {{ ha_storage_zpool_mountpoint }} \
+      block:
+      - name: Post-Install | crmsh | Check zpool
+        command: crm_resource --locate --resource {{ ha_storage.volume_group }}_z
+        changed_when: False
+        failed_when: False
+        register: crm_locate_result
+
+      - name: Post-Install | crmsh | Create zpool
+        when: crm_locate_result.rc != 0
+        command: >
+          zpool create -R {{ ha_storage_zpool_mountpoint }} \
             {{ ha_storage.volume_group }} \
             raidz1 \
-            {{ virtio_id_devices | regex_replace(',', ' ') }}
-
+            {{ ha_storage|json_query("luns[*].id")|join(" ") }}
+            
 # 2. a. lvcreate
 #    b. mkfs
-- name: Create the dataseets
+- name: Post-Install | crmsh | Create the dataseets
   when:
   - ha_storage.filesystems is defined
   - ha_storage.filesystems | length > 0
@@ -183,12 +213,12 @@
 #
 # 3. a. create crm script
 #    b. run the srcipt
-- name: Install some crm scripts (directories)
+- name: Post-Install | crmsh | Install some crm scripts (directories)
   file: path={{ ha_storage_crm_scripts_root_path }}/{{ ha_storage.volume_group }} state=directory
 
-- name: Install some crm scripts (files)
+- name: Post-Install | crmsh | Install some crm scripts (files)
   template: src=group_clustered_vg.yml.j2 dest={{ ha_storage_crm_scripts_root_path }}/{{ ha_storage.volume_group }}/main.yml
 
-- name: Create the resources
+- name: Post-Install | crmsh | Create the resources
   command: crm -w script run {{ ha_storage.volume_group }}
   run_once: true

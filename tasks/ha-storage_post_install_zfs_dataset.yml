@@ -1,6 +1,6 @@
 ---
 
-- name:  | Dataset create "{{ ha_storage.volume_group }}/{{ item.lv }}"
+- name: Post-Install | zfs | Dataset create "{{ ha_storage.volume_group }}/{{ item.lv }}"
   when:
     - item.lv is defined
     - item.mountpoint is defined

@@ -1,14 +1,15 @@
 ---
 
-- name: Locate the volume group resource "g-{{ ha_storage.volume_group }}"
+- name: Post-Install | lvm | Locate the volume group resource "g-{{ ha_storage.volume_group }}"
   shell: >
     set -o pipefail ; \
     crm_resource --locate --resource "g-{{ ha_storage.volume_group }}" \
         | awk '{print $NF}' | sort -u
+  changed when: False
   register: crm_resource_locate_group
   run_once: true
 
-- name: Check that the resource is running at only one location
+- name: Post-Install | lvm | Check that the resource is running at only one location
   fail: msg="g-{{ ha_storage.volume_group }} cannot be running at several locations at the same time ({{ crm_resource_locate_group.stdout_lines | join(' ') }})"
   when:
     - crm_resource_locate_group is defined
@@ -19,34 +20,37 @@
     - item.fstype != "tmpfs"
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
   block:
-    - name: Wait for the volume to be available on the node
+    - name: Post-Install | lvm | Wait for the volume to be available on the node
       command: fdisk -l {{ virtio_id_devices | regex_replace(',', ' ') }}
+      changed when: False
+      failed when: False
       register: fdisk_volumes
       until: fdisk_volumes.stderr_lines | length == 0
       retries: 60
       delay: 30
 
-    - name: LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
+    - name: Post-Install | lvm | LV create "{{ ha_storage.volume_group }}/{{ item.lv }}"
       lvol: vg={{ ha_storage.volume_group }} lv={{ item.lv }} size={{ item.size }} opts="-m{{ lvm_mirors }}"
 
-- name: Cleanup the resource group
+- name: Post-Install | lvm | Cleanup the resource group
   command: pcs resource cleanup g-{{ ha_storage.volume_group }}
   when: crm_resource_locate_group.stdout.find("NOT") > -1
 
-- name: LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
+- name: Post-Install | lvm | LV mkfs "{{ ha_storage.volume_group }}/{{ item.lv }}"
   when:
     - item.fstype != "tmpfs"
     - crm_resource_locate_group.stdout.find(ansible_hostname) > -1
   filesystem: fstype={{ item.fstype | default(ha_storage_fs) }} dev=/dev/{{ ha_storage.volume_group }}/{{ item.lv }}
 
-- name: Check group configuration "g-{{ ha_storage.volume_group }}"
+- name: Post-Install | lvm | Check group configuration "g-{{ ha_storage.volume_group }}"
   shell:
     set -o pipefail ; \
     pcs resource show g-{{ ha_storage.volume_group }} \
     | fgrep Resource
+  changed when: False
   register: pcs_group_conf
 
-- name: Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}"
+- name: Post-Install | lvm | Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}"
   when:
     - pcs_group_conf.stdout.find(item.lv) < 0
   shell: >
@@ -61,19 +65,21 @@
         op stop timeout=60 interval=0 \
         --group g-{{ ha_storage.volume_group }}
 
-- name: Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}-postmount"
+- name: Post-Install | lvm | Create primitive "{{ ha_storage.volume_group }}-{{ item.lv }}-postmount"
   when:
     - pcs_group_conf.stdout.find(item.lv) < 0
   command: >
     pcs resource create "{{ ha_storage.volume_group }}-{{ item.lv }}-postmount" systemd:postmount-{{ ha_storage.volume_group }}-{{ item.lv }} \
         --group g-{{ ha_storage.volume_group }}
 
-- name: Check "{{ ha_storage.volume_group }}-vg"
+- name: Post-Install | lvm | Check "{{ ha_storage.volume_group }}-vg"
   command: crm_resource --locate --resource "{{ ha_storage.volume_group }}-vg"
+  changed when: False
+  failed when: False
   register: crm_resource_locate_vg
   run_once: true
 
-- name: Cleanup "{{ ha_storage.volume_group }}-vg"
+- name: Post-Install | lvm | Cleanup "{{ ha_storage.volume_group }}-vg"
   when:
     - crm_resource_locate_vg.stdout.find('NOT') > -1
   command: pcs resource cleanup {{ ha_storage.volume_group }}-vg
